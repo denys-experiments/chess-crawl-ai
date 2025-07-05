@@ -163,8 +163,8 @@ export default function Home() {
 
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
-    const newBoard = board.map(row => [...row]);
-    const pieceToMove = { ...(newBoard[from.y][from.x] as Piece) };
+    const newBoard = board.map(row => row.map(tile => ({...tile})));
+    const pieceToMove = JSON.parse(JSON.stringify(newBoard[from.y][from.x])) as Piece;
     const targetTile = newBoard[to.y][to.x];
 
     let newPieceState: Piece = {
@@ -174,18 +174,16 @@ export default function Home() {
     };
     
     if (pieceToMove.piece === 'Pawn') {
-        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-        
         const isOrthogonalMove = from.x === to.x || from.y === to.y;
-        
+        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
         const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
         
         const isStandardForwardMove = 
-            (forwardVector.y !== undefined && to.y === from.y + forwardVector.y && from.x === to.x) || 
-            (forwardVector.x !== undefined && to.x === from.x + forwardVector.x && from.y === to.y);
+            (forwardVector.y !== undefined && to.y === from.y + forwardVector.y && from.x === to.x && !targetTile) || 
+            (forwardVector.x !== undefined && to.x === from.x + forwardVector.x && from.y === to.y && !targetTile);
 
         if (isOrthogonalMove && !isStandardForwardMove) {
-             let newDirection = newPieceState.direction;
+             let newDirection = pieceToMove.direction;
              if (to.x > from.x) newDirection = 'right';
              else if (to.x < from.x) newDirection = 'left';
              else if (to.y > from.y) newDirection = 'down';
@@ -195,12 +193,12 @@ export default function Home() {
     }
 
     if (targetTile?.type === 'chest') {
-      if (pieceToMove.piece === 'Pawn' && targetTile.content === 'promotion') {
+      if (pieceToMove.piece === 'Pawn') {
         const newPieceType = getPromotionPiece(level, playerPieces);
         newPieceState = {
           ...newPieceState,
           piece: newPieceType,
-          direction: undefined, // Promoted piece is not a pawn anymore
+          direction: undefined,
         };
         toast({ title: "Promotion!", description: `Your Pawn promoted to a ${newPieceType}!` });
       } else {
@@ -339,25 +337,21 @@ export default function Home() {
     const from = { x: pieceToMove.x, y: pieceToMove.y };
     const targetTile = board[move.y][move.x];
 
-    const newBoard = board.map(row => [...row]);
+    const newBoard = board.map(row => row.map(tile => ({...tile})));
     
-    let newPieceState: Piece = {
-      ...pieceToMove,
-      x: move.x,
-      y: move.y,
-    };
+    let newPieceState: Piece = JSON.parse(JSON.stringify(newBoard[from.y][from.x] as Piece));
+    newPieceState.x = move.x;
+    newPieceState.y = move.y;
     
     if (pieceToMove.piece === 'Pawn') {
-        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-        
         const isOrthogonalMove = from.x === move.x || from.y === move.y;
-        
+        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
         const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
         
         const isStandardForwardMove = 
-            (forwardVector.y !== undefined && move.y === from.y + forwardVector.y && from.x === move.x) || 
-            (forwardVector.x !== undefined && move.x === from.x + forwardVector.x && from.y === move.y);
-
+            (forwardVector.y !== undefined && move.y === from.y + forwardVector.y && from.x === move.x && !targetTile) || 
+            (forwardVector.x !== undefined && move.x === from.x + forwardVector.x && from.y === move.y && !targetTile);
+        
         if (isOrthogonalMove && !isStandardForwardMove) {
             let newDirection = pieceToMove.direction;
             if (move.x > from.x) newDirection = 'right';

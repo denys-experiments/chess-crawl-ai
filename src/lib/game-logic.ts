@@ -95,9 +95,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   for (let i = 0; i < numChests; i++) {
       const pos = emptySquares.pop();
       if (pos) {
-        const promotionChance = Math.min(0.5, 0.15 + level * 0.02);
-        const chestContent: ('cosmetic' | 'promotion') = Math.random() < promotionChance ? 'promotion' : 'cosmetic';
-        board[pos.y][pos.x] = { type: 'chest', content: chestContent };
+        board[pos.y][pos.x] = { type: 'chest' };
       }
   }
 
@@ -110,7 +108,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
 }
 
 function isWithinBoard(x: number, y: number): boolean {
-  return x >= 0 && x < 8 && y >= 0 && y < 8;
+  return x >= 0 && x < 8 && y < 8;
 }
 
 export function getValidMoves(pos: Position, board: Board): Position[] {
@@ -188,11 +186,11 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     let isBlocked = false;
 
     if (!isWithinBoard(obstaclePos.x, obstaclePos.y)) {
-      isBlocked = true; // Board edge is an obstacle
+      isBlocked = true;
     } else {
       const obstacle = board[obstaclePos.y][obstaclePos.x];
       if (obstacle && obstacle.type !== 'chest') {
-        isBlocked = true; // Any tile that isn't a chest is an obstacle
+        isBlocked = true;
       }
     }
 

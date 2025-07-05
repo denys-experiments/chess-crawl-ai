@@ -18,7 +18,6 @@ export interface Wall {
 
 export interface Chest {
   type: 'chest';
-  content: 'cosmetic' | 'promotion';
 }
 
 export interface SleepingAlly {
