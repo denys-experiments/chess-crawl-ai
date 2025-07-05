@@ -136,28 +136,53 @@ export default function Home() {
     });
   }, [checkForAllyRescue]);
   
-  const startNewGame = useCallback(() => {
+  const setupLevel = useCallback((levelToSetup: number, piecesToCarry: Piece[]) => {
     setIsLoading(true);
-    const startingPieces: Piece[] = [
-        { type: 'piece', piece: 'King', color: 'white', x: 0, y: 0, id: `wk-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: 1, captures: 0 },
-        { type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 },
-        { type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 }
-    ];
-    let log = `--- STARTING NEW GAME (LEVEL 1) ---\n`;
-    log += `Initial pieces: ${startingPieces.length}\n`;
-    log += JSON.stringify(startingPieces.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
-    appendToDebugLog(log);
+
+    let finalPieces = piecesToCarry;
+    let isNewGame = false;
+    // If it's the very first level and no pieces were provided, create the default set.
+    if (levelToSetup === 1 && piecesToCarry.length === 0) {
+        isNewGame = true;
+        finalPieces = [
+            { type: 'piece', piece: 'King', color: 'white', x: 0, y: 0, id: `wk-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: 1, captures: 0 },
+            { type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 },
+            { type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 }
+        ];
+    }
     
-    const { board: newBoard, factions } = initializeBoard(1, startingPieces);
+    setLevel(levelToSetup);
+    
+    const { board: newBoard, factions } = initializeBoard(levelToSetup, finalPieces);
     checkForInitialRescues(newBoard);
+    
     setBoard(newBoard);
     setActiveEnemyFactions(factions);
     setTurnIndex(0);
-  }, [checkForInitialRescues, appendToDebugLog]);
+    setIsLevelComplete(false);
+
+    // Logging logic moved here for consistency.
+    let log = '';
+    if (isNewGame) {
+        log = `--- STARTING NEW GAME (LEVEL 1) ---\n`;
+    } else {
+        log = `--- STARTING LEVEL ${levelToSetup} ---\n`;
+    }
+    const playerPiecesOnBoard: Piece[] = [];
+    newBoard.forEach(row => row.forEach(tile => {
+        if (tile?.type === 'piece' && tile.color === 'white') {
+            playerPiecesOnBoard.push(tile);
+        }
+    }));
+    log += `Player pieces on board: ${playerPiecesOnBoard.length}\n`;
+    log += JSON.stringify(playerPiecesOnBoard.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
+    appendToDebugLog(log);
+
+}, [appendToDebugLog, checkForInitialRescues]);
   
   useEffect(() => {
-    startNewGame();
-  }, [startNewGame]);
+    setupLevel(1, []);
+  }, [setupLevel]);
   
   useEffect(() => {
     if (isLoading) {
@@ -188,13 +213,6 @@ export default function Home() {
     });
     setPlayerPieces(newPlayerPieces);
     setEnemyPieces(newEnemyPieces);
-    
-    if (isLoading) {
-        let log = `--- LEVEL ${level} STARTED ---\n`;
-        log += `Player pieces on board: ${newPlayerPieces.length}\n`;
-        log += JSON.stringify(newPlayerPieces.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
-        appendToDebugLog(log);
-    }
 
     if (level > 0 && !isLoading) {
       if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0) {
@@ -292,9 +310,9 @@ export default function Home() {
     setBoard(newBoard);
     
     setTimeout(() => {
-        setSelectedPiece(null);
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
         onComplete();
+        setSelectedPiece(null);
     }, 300);
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
 
@@ -309,8 +327,6 @@ export default function Home() {
         clickLock.current = true;
         
         const from = { ...selectedPiece };
-        
-        setSelectedPiece(null);
         
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
@@ -496,31 +512,15 @@ export default function Home() {
     }
   }, [currentTurn, isEnemyThinking, runEnemyTurn, isGameOver, isLevelComplete]);
   
-  const startNextLevel = (piecesToCarry: Piece[]) => {
-    setIsLoading(true);
-    const nextLevel = level + 1;
-    setLevel(nextLevel);
-    
-    const { board: newBoard, factions } = initializeBoard(nextLevel, piecesToCarry);
-    checkForInitialRescues(newBoard);
-    
-    setBoard(newBoard);
-    setActiveEnemyFactions(factions);
-    setTurnIndex(0);
-    setIsLevelComplete(false);
-  };
-
   const restartGame = () => {
     setIsLoading(true);
     setDebugLog('');
-    setLevel(1);
     setSelectedPiece(null);
     setAvailableMoves([]);
     setInventory({ pieces: [], cosmetics: [] });
     setAiReasoning('');
-    setIsLevelComplete(false);
     setIsGameOver(false);
-    startNewGame();
+    setupLevel(1, []);
   };
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
@@ -554,7 +554,7 @@ export default function Home() {
       appendToDebugLog(log);
       
       setInventory(prev => ({...prev, pieces: finalPiecesForNextLevel}));
-      startNextLevel(finalPiecesForNextLevel);
+      setupLevel(level + 1, finalPiecesForNextLevel);
   };
 
   const selectedPieceData = useMemo(() => {
