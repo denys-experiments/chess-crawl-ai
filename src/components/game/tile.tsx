@@ -43,7 +43,6 @@ export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: T
         isDark ? 'bg-secondary/50' : 'bg-secondary/20',
         {
           'bg-primary/50': isSelected,
-          'hover:bg-accent/30': tile?.type !== 'wall',
         }
       )}
     >
