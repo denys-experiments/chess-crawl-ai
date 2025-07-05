@@ -1,5 +1,6 @@
 
 
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -270,39 +271,43 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   };
 
   const forwardVector = vectors[direction];
+  const nx = x + forwardVector.x;
+  const ny = y + forwardVector.y;
+  let isForwardBlocked = false;
 
-  // 1. Move forward
-  let nx = x + forwardVector.x;
-  let ny = y + forwardVector.y;
-
+  // 1. Check forward move
   if (isWithinBoard(nx, ny, board)) {
     const target = board[ny][nx];
     if (!target || target.type === 'chest') {
       moves.push({ x: nx, y: ny });
     } else {
-      // If blocked, try to bounce
-      const bounceDirections = {
-        'up': ['left', 'right'],
-        'down': ['left', 'right'],
-        'left': ['up', 'down'],
-        'right': ['up', 'down'],
-      };
-
-      bounceDirections[direction].forEach(bounceDir => {
-        const bounceVector = vectors[bounceDir as 'up'|'down'|'left'|'right'];
-        const bnx = x + bounceVector.x;
-        const bny = y + bounceVector.y;
-        if (isWithinBoard(bnx, bny, board)) {
-          const bounceTarget = board[bny][bnx];
-          if (!bounceTarget || bounceTarget.type === 'chest') {
-            moves.push({ x: bnx, y: bny });
-          }
-        }
-      });
+      isForwardBlocked = true;
     }
+  } else {
+    // Forward move is off the board
+    isForwardBlocked = true;
   }
 
-  // 2. Diagonal capture
+  // 2. If forward is blocked, allow movement to any other open adjacent square.
+  if (isForwardBlocked) {
+    const allDirections: ('up' | 'down' | 'left' | 'right')[] = ['up', 'down', 'left', 'right'];
+
+    allDirections.forEach(sideStepDir => {
+      if (sideStepDir === direction) return; // Can't move forward, we already established that.
+
+      const sideStepVector = vectors[sideStepDir];
+      const snx = x + sideStepVector.x;
+      const sny = y + sideStepVector.y;
+      if (isWithinBoard(snx, sny, board)) {
+        const sideStepTarget = board[sny][snx];
+        if (!sideStepTarget || sideStepTarget.type === 'chest') {
+          moves.push({ x: snx, y: sny });
+        }
+      }
+    });
+  }
+
+  // 3. Diagonal capture
   const captureDirections = {
     'up':    [{ dx: -1, dy: -1 }, { dx: 1, dy: -1 }],
     'down':  [{ dx: -1, dy: 1 }, { dx: 1, dy: 1 }],
@@ -415,3 +420,4 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
+
