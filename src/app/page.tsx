@@ -106,12 +106,22 @@ export default function Home() {
     setBoard(newBoard);
     setActiveEnemyFactions(factions);
     setTurnIndex(0);
-    setIsLoading(false);
   }, [checkForInitialRescues]);
   
   useEffect(() => {
     startNewGame();
   }, [startNewGame]);
+  
+  useEffect(() => {
+    // When the board changes for a new level, `isLoading` is true, which
+    // disables animations on the pieces for that render. This effect runs
+    // immediately after, setting `isLoading` to false so that subsequent
+    // moves during gameplay are animated correctly.
+    if (isLoading) {
+      setIsLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board]);
 
   const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
@@ -239,7 +249,7 @@ export default function Home() {
     setSelectedPiece(null);
     setAvailableMoves([]);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  }, [board, checkForAllyRescue, inventory, level, toast, turnOrder]);
+  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || currentTurn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
@@ -432,7 +442,6 @@ export default function Home() {
     setActiveEnemyFactions(factions);
     setTurnIndex(0);
     setIsLevelComplete(false);
-    setIsLoading(false);
   };
 
   const restartGame = () => {
@@ -449,7 +458,6 @@ export default function Home() {
     setAiReasoning('');
     setIsLevelComplete(false);
     setIsGameOver(false);
-    setIsLoading(false);
   };
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
@@ -476,7 +484,6 @@ export default function Home() {
     setAiReasoning('');
     setIsLevelComplete(false);
     setIsGameOver(false);
-    setIsLoading(false);
     toast({ title: "Cheat Activated!", description: `Level regenerated to ${width}x${height}.` });
   }
 
@@ -571,7 +578,7 @@ export default function Home() {
     }
   }
 
-  if (isLoading || !board) {
+  if (!board) {
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
