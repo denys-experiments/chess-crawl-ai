@@ -8,7 +8,7 @@ export interface Piece {
   color: PieceColor;
   x: number;
   y: number;
-  cosmetics?: string[];
+  cosmetic?: string;
   direction?: 'up' | 'down' | 'left' | 'right';
 }
 

@@ -32,30 +32,66 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
     }
   };
 
-  const hasSunglasses = piece.cosmetics?.includes('sunglasses');
+  const getCosmeticDisplay = () => {
+    if (!piece.cosmetic) return null;
+
+    let emoji = '';
+    let classes = 'absolute';
+    const sizeClass = size === 'lg' ? 'text-2xl md:text-3xl' : 'text-xl';
+
+    switch (piece.cosmetic) {
+        case 'sunglasses':
+            emoji = '😎';
+            classes += ' top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2';
+            break;
+        case 'tophat':
+            emoji = '🎩';
+            classes += ' top-0 left-1/2 -translate-x-1/2 -translate-y-1/2';
+            break;
+        case 'partyhat':
+            emoji = '🎉';
+            classes += ' top-0 left-1/2 -translate-x-1/2 -translate-y-1/2';
+            break;
+        case 'bowtie':
+            emoji = '🎀';
+            classes += ' bottom-1/4 left-1/2 -translate-x-1/2';
+            break;
+        case 'heart':
+            emoji = '❤️';
+            classes += ' top-1/4 -right-2';
+            break;
+        case 'star':
+            emoji = '⭐';
+            classes += ' top-1/4 -left-2';
+            break;
+        default:
+            return null;
+    }
+
+    return (
+        <div className={cn(classes, sizeClass)} style={{ textShadow: 'none' }}>
+            {emoji}
+        </div>
+    );
+  };
 
   return (
     <div className="relative flex items-center justify-center">
       <span
         className={cn(
-          'drop-shadow-lg',
-          piece.piece === 'Pawn' && 'transition-transform duration-300',
+          'drop-shadow-lg transition-transform duration-300',
           size === 'lg' ? 'text-6xl md:text-7xl' : 'text-4xl',
           {
             'text-foreground': piece.color === 'white',
             'text-red-400': piece.color === 'black',
           },
-          getRotationClass()
+          piece.piece === 'Pawn' ? getRotationClass() : ''
         )}
         style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
       >
         {getPieceUnicode()}
       </span>
-      {hasSunglasses && (
-        <div className={cn("absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2", size === 'lg' ? 'text-2xl' : 'text-xl')} style={{ textShadow: 'none' }}>
-          😎
-        </div>
-      )}
+      {getCosmeticDisplay()}
     </div>
   );
 }

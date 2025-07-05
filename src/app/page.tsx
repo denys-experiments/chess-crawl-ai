@@ -120,22 +120,24 @@ export default function Home() {
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
     const newBoard = board.map(row => [...row]);
-    const piece = newBoard[from.y][from.x] as Piece;
+    const pieceToMove = newBoard[from.y][from.x] as Piece;
     const targetTile = newBoard[to.y][to.x];
     
     let newPieceState: Piece = {
-        ...piece,
+        ...pieceToMove,
+        id: pieceToMove.id, 
         x: to.x,
         y: to.y,
     };
 
     if (newPieceState.piece === 'Pawn') {
         const isOrthogonalMove = from.x === to.x || from.y === to.y;
-        const isStandardForwardMove =
-            (piece.direction === 'up' && to.y === from.y - 1 && from.x === to.x) ||
-            (piece.direction === 'down' && to.y === from.y + 1 && from.x === to.x) ||
-            (piece.direction === 'left' && to.x === from.x - 1 && from.y === to.y) ||
-            (piece.direction === 'right' && to.x === from.x + 1 && from.y === to.y);
+        
+        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
+        const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
+        const isStandardForwardMove = 
+            (forwardVector.y && to.y === from.y + forwardVector.y && from.x === to.x) || 
+            (forwardVector.x && to.x === from.x + forwardVector.x && from.y === to.y);
 
         const canLandOn = !targetTile || targetTile.type === 'chest';
 
@@ -147,17 +149,26 @@ export default function Home() {
             else if (to.y < from.y) newDirection = 'up';
             newPieceState = {...newPieceState, direction: newDirection};
         } else {
-             newPieceState = {...newPieceState, direction: piece.direction};
+             newPieceState = {...newPieceState, direction: pieceToMove.direction};
         }
     }
 
-    if (targetTile) {
-      if(targetTile.type === 'chest') {
-        const cosmetic = "sunglasses";
-        newPieceState.cosmetics = [...(newPieceState.cosmetics || []), cosmetic];
-        setInventory(prev => ({...prev, cosmetics: [...prev.cosmetics, cosmetic]}));
-        toast({ title: "Chest Opened!", description: `Your ${piece.piece} found sunglasses!` });
-      }
+    if (targetTile?.type === 'chest') {
+        const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
+        const cosmeticDisplayNames: { [key: string]: string } = {
+            sunglasses: 'sunglasses',
+            tophat: 'a top hat',
+            partyhat: 'a party hat',
+            bowtie: 'a bowtie',
+            heart: 'a heart',
+            star: 'a star',
+        };
+        const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
+        
+        newPieceState.cosmetic = newCosmetic;
+        
+        setInventory(prev => ({...prev, cosmetics: [...prev.cosmetics, newCosmetic]}));
+        toast({ title: "Chest Opened!", description: `Your ${pieceToMove.piece} found ${cosmeticDisplayNames[newCosmetic]}!` });
     }
 
     newBoard[to.y][to.x] = newPieceState;
@@ -191,7 +202,6 @@ export default function Home() {
     setIsEnemyThinking(true);
     setAiReasoning('');
 
-    // Short delay to allow UI to update
     await new Promise(res => setTimeout(res, 200));
 
     const enemies: Piece[] = [];
@@ -221,7 +231,6 @@ export default function Home() {
             let score = 0;
             const targetTile = board[move.y][move.x];
 
-            // 1. Capture score
             if (targetTile?.type === 'piece' && targetTile.color === 'white') {
                 switch (targetTile.piece) {
                     case 'Queen': score += 90; break;
@@ -233,7 +242,6 @@ export default function Home() {
                 }
             }
 
-            // 2. Move towards player king
             if (playerKing) {
                 const currentDist = Math.abs(enemy.x - playerKing.x) + Math.abs(enemy.y - playerKing.y);
                 const newDist = Math.abs(move.x - playerKing.x) + Math.abs(move.y - playerKing.y);
@@ -251,16 +259,13 @@ export default function Home() {
                  }
             }
             
-            // 3. Centrality score
             const centrality = (4 - Math.abs(move.x - 3.5)) + (4 - Math.abs(move.y - 3.5));
             score += centrality / 4; 
 
-            // 4. King movement penalty
             if (enemy.piece === 'King') {
                 score -= 5;
             }
             
-            // 5. Randomness to break ties
             score += Math.random() * 0.5;
 
             allPossibleMoves.push({ piece: enemy, move, score });
@@ -277,25 +282,27 @@ export default function Home() {
     allPossibleMoves.sort((a, b) => b.score - a.score);
     const bestMove = allPossibleMoves[0];
 
-    const { piece, move } = bestMove;
-    const from = { x: piece.x, y: piece.y };
+    const { piece: pieceToMove, move } = bestMove;
+    const from = { x: pieceToMove.x, y: pieceToMove.y };
     const targetTile = board[move.y][move.x];
 
     const newBoard = board.map(row => [...row]);
     
     let newPieceState: Piece = {
-        ...piece,
+        ...pieceToMove,
+        id: pieceToMove.id,
         x: move.x,
         y: move.y,
     };
     
     if (newPieceState.piece === 'Pawn') {
         const isOrthogonalMove = from.x === move.x || from.y === move.y;
+        
+        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
+        const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
         const isStandardForwardMove = 
-            (piece.direction === 'up' && move.y === from.y - 1 && from.x === move.x) ||
-            (piece.direction === 'down' && move.y === from.y + 1 && from.x === move.x) ||
-            (piece.direction === 'left' && move.x === from.x - 1 && from.y === move.y) ||
-            (piece.direction === 'right' && move.x === from.x + 1 && from.y === move.y);
+            (forwardVector.y && move.y === from.y + forwardVector.y && from.x === move.x) || 
+            (forwardVector.x && move.x === from.x + forwardVector.x && from.y === move.y);
 
         const canLandOn = !targetTile || targetTile.type === 'chest';
 
@@ -307,7 +314,7 @@ export default function Home() {
             else if (move.y < from.y) newDirection = 'up';
             newPieceState = {...newPieceState, direction: newDirection};
         } else {
-            newPieceState = {...newPieceState, direction: piece.direction};
+            newPieceState = {...newPieceState, direction: pieceToMove.direction};
         }
     }
 
@@ -316,7 +323,7 @@ export default function Home() {
     
     setBoard(newBoard);
 
-    let reasoning = `Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`;
+    let reasoning = `Enemy ${pieceToMove.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`;
     if (targetTile?.type === 'piece') {
         reasoning += ` Capturing a ${targetTile.piece}.`;
     }
@@ -365,7 +372,7 @@ export default function Home() {
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
       const king = playerPieces.find(p => p.piece === 'King');
-      const allCarriedPieces = king ? [...piecesToCarry, {...king, cosmetics: king.cosmetics, id: `wk-${Date.now()}`}] : piecesToCarry;
+      const allCarriedPieces = king ? [...piecesToCarry, {...king, cosmetic: king.cosmetic, id: `wk-${Date.now()}`}] : piecesToCarry;
 
       setInventory(prev => ({...prev, pieces: allCarriedPieces}));
       startNextLevel(allCarriedPieces);
