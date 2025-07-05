@@ -39,9 +39,26 @@ export default function Home() {
 
   useEffect(() => {
     setIsLoading(true);
-    setBoard(initializeBoard(1));
+    // Board initialization is now client-side only to prevent hydration errors
+    const initialBoard = initializeBoard(1);
+    checkForInitialRescues(initialBoard);
+    setBoard(initialBoard);
     setIsLoading(false);
   }, []);
+
+  const checkForInitialRescues = (initialBoard: Board) => {
+    const playerPiecesOnBoard: Piece[] = [];
+    initialBoard.forEach((row) => {
+        row.forEach((tile) => {
+            if (tile?.type === 'piece' && tile.color === 'white') {
+                playerPiecesOnBoard.push(tile);
+            }
+        });
+    });
+    playerPiecesOnBoard.forEach(piece => {
+        checkForAllyRescue({x: piece.x, y: piece.y}, initialBoard);
+    });
+  }
 
   useEffect(() => {
     if (!board) return;
@@ -108,16 +125,31 @@ export default function Home() {
     
     let pieceToMove = {...piece};
 
-    // Only change pawn direction when moving to an empty square
-    if (pieceToMove.piece === 'Pawn' && !targetTile) {
-      if (to.x > from.x) {
-        pieceToMove.direction = 'right';
-      } else if (to.x < from.x) {
-        pieceToMove.direction = 'left';
-      } else if (to.y > from.y) {
-        pieceToMove.direction = 'down';
-      } else if (to.y < from.y) {
-        pieceToMove.direction = 'up';
+    if (pieceToMove.piece === 'Pawn') {
+      const isMoveToEmptySquare = !targetTile;
+  
+      if (isMoveToEmptySquare) {
+        let isStandardForwardMove = false;
+        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
+  
+        switch (currentDirection) {
+          case 'up':    isStandardForwardMove = to.x === from.x && to.y < from.y; break;
+          case 'down':  isStandardForwardMove = to.x === from.x && to.y > from.y; break;
+          case 'left':  isStandardForwardMove = to.y === from.y && to.x < from.x; break;
+          case 'right': isStandardForwardMove = to.y === from.y && to.x > from.x; break;
+        }
+  
+        if (!isStandardForwardMove) {
+          if (to.x > from.x) {
+            pieceToMove.direction = 'right';
+          } else if (to.x < from.x) {
+            pieceToMove.direction = 'left';
+          } else if (to.y > from.y) {
+            pieceToMove.direction = 'down';
+          } else if (to.y < from.y) {
+            pieceToMove.direction = 'up';
+          }
+        }
       }
     }
 
@@ -241,16 +273,29 @@ export default function Home() {
     const newBoard = board.map(row => row.slice());
     let pieceToMove = { ...(newBoard[from.y][from.x] as Piece) };
     
-    if (pieceToMove.piece === 'Pawn' && !targetTile) {
-      if (move.x > from.x) {
-        pieceToMove.direction = 'right';
-      } else if (move.x < from.x) {
-        pieceToMove.direction = 'left';
-      } else if (move.y > from.y) {
-        pieceToMove.direction = 'down';
-      } else if (move.y < from.y) {
-        pieceToMove.direction = 'up';
-      }
+    if (pieceToMove.piece === 'Pawn') {
+        const isMoveToEmptySquare = !targetTile;
+        if (isMoveToEmptySquare) {
+            let isStandardForwardMove = false;
+            const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
+            switch (currentDirection) {
+                case 'up': isStandardForwardMove = move.x === from.x && move.y < from.y; break;
+                case 'down': isStandardForwardMove = move.x === from.x && move.y > from.y; break;
+                case 'left': isStandardForwardMove = move.y === from.y && move.x < from.x; break;
+                case 'right': isStandardForwardMove = move.y === from.y && move.x > from.x; break;
+            }
+            if (!isStandardForwardMove) {
+                if (move.x > from.x) {
+                    pieceToMove.direction = 'right';
+                } else if (move.x < from.x) {
+                    pieceToMove.direction = 'left';
+                } else if (move.y > from.y) {
+                    pieceToMove.direction = 'down';
+                } else if (move.y < from.y) {
+                    pieceToMove.direction = 'up';
+                }
+            }
+        }
     }
 
     newBoard[move.y][move.x] = { ...pieceToMove, x: move.x, y: move.y };
@@ -278,34 +323,20 @@ export default function Home() {
     setLevel(nextLevel);
     
     const newBoard = initializeBoard(nextLevel, piecesToCarry);
-
-    const playerPiecesOnNewBoard: Piece[] = [];
-    newBoard.forEach((row) => {
-        row.forEach((tile) => {
-            if (tile?.type === 'piece' && tile.color === 'white') {
-                playerPiecesOnNewBoard.push(tile);
-            }
-        });
-    });
-
-    // Use a timeout to ensure the board is set after the current render cycle
-    setTimeout(() => {
-        const finalBoard = [...newBoard];
-        // Check for immediate rescues after board setup
-        playerPiecesOnNewBoard.forEach(piece => {
-            checkForAllyRescue({x: piece.x, y: piece.y}, finalBoard);
-        });
-        setBoard(finalBoard);
-        setIsLevelComplete(false);
-        setTurn('player');
-        setIsLoading(false);
-    }, 0);
+    checkForInitialRescues(newBoard);
+    
+    setBoard(newBoard);
+    setIsLevelComplete(false);
+    setTurn('player');
+    setIsLoading(false);
   };
 
   const restartGame = () => {
     setIsLoading(true);
     setLevel(1);
-    setBoard(initializeBoard(1));
+    const newBoard = initializeBoard(1);
+    checkForInitialRescues(newBoard);
+    setBoard(newBoard);
     setSelectedPiece(null);
     setAvailableMoves([]);
     setTurn('player');
