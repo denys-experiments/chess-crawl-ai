@@ -68,7 +68,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
       onMouseDown={handleMouseDown}
       className={cn(
         "w-full max-w-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
-        isLargeBoard && "overflow-auto flex items-center justify-center"
+        isLargeBoard && "overflow-auto"
       )}
       style={!isLargeBoard ? { aspectRatio: `${width} / ${height}` } : {}}
     >
