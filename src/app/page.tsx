@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Piece, Board, Position, PieceType, Tile } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
@@ -78,6 +78,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEnemyThinking, setIsEnemyThinking] = useState(false);
   const [isPlayerMoving, setIsPlayerMoving] = useState(false);
+  const clickLock = useRef(false);
 
   const [activeEnemyFactions, setActiveEnemyFactions] = useState<string[]>(['black']);
   const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
@@ -179,12 +180,12 @@ export default function Home() {
   
   // Recalculate available moves whenever the selected piece or the board changes.
   useEffect(() => {
-    if (selectedPiece && board) {
+    if (selectedPiece && board && currentTurn === 'player') {
       setAvailableMoves(getValidMoves(selectedPiece, board));
     } else {
       setAvailableMoves([]);
     }
-  }, [selectedPiece, board]);
+  }, [selectedPiece, board, currentTurn]);
 
   const movePiece = useCallback((from: Position, to: Position, onComplete: () => void) => {
     if (!board) return;
@@ -263,7 +264,7 @@ export default function Home() {
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (!board || isLevelComplete || isGameOver || isPlayerMoving) return;
+    if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
 
     const isPlayerTurn = currentTurn === 'player' && !isEnemyThinking;
 
@@ -271,12 +272,14 @@ export default function Home() {
     if (selectedPiece && availableMoves.some(move => move.x === x && move.y === y)) {
       if (isPlayerTurn) {
         setIsPlayerMoving(true);
+        clickLock.current = true;
+
         const from = selectedPiece;
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
+          clickLock.current = false;
         });
         setSelectedPiece(null);
-        setAvailableMoves([]);
       }
       return;
     }
@@ -293,8 +296,7 @@ export default function Home() {
       return;
     }
 
-    // Case 3: Click is anywhere else. ONLY deselect if it's the player's turn.
-    // This preserves selection across enemy turns.
+    // Case 3: Click is anywhere else.
     if (isPlayerTurn) {
       setSelectedPiece(null);
     }
