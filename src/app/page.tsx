@@ -248,7 +248,10 @@ export default function Home() {
     setBoard(newBoard);
     setSelectedPiece(null);
     setAvailableMoves([]);
-    setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+    
+    setTimeout(() => {
+        setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+    }, 300);
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
