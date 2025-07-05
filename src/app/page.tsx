@@ -419,6 +419,8 @@ export default function Home() {
     }
     setAiReasoning(reasoning);
 
+    await new Promise(res => setTimeout(res, 300)); // allow animation to play
+
     setIsEnemyThinking(false);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
   }, [board, turnOrder]);
