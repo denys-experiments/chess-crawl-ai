@@ -1,3 +1,4 @@
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 
 function getRandomAllyPiece(level: number): PieceType {
@@ -114,17 +115,17 @@ export function getValidMoves(pos: Position, board: Board): Position[] {
 
   switch (piece.piece) {
     case 'Pawn':
-      return getPawnMoves(pos, piece, board);
+      return getPawnMoves(pos, piece as Piece, board);
     case 'Knight':
-      return getKnightMoves(pos, piece, board);
+      return getKnightMoves(pos, piece as Piece, board);
     case 'Bishop':
-      return getSlidingMoves(pos, piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+      return getSlidingMoves(pos, piece as Piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
     case 'Rook':
-      return getSlidingMoves(pos, piece, board, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
+      return getSlidingMoves(pos, piece as Piece, board, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
     case 'Queen':
-      return getSlidingMoves(pos, piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]);
+      return getSlidingMoves(pos, piece as Piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]);
     case 'King':
-      return getKingMoves(pos, piece, board);
+      return getKingMoves(pos, piece as Piece, board);
     default:
       return [];
   }
@@ -143,8 +144,11 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   }[direction];
 
   const forwardPos = { x: x + forward.x, y: y + forward.y };
-  if (isWithinBoard(forwardPos.x, forwardPos.y) && !board[forwardPos.y][forwardPos.x]) {
-    moves.push(forwardPos);
+  if (isWithinBoard(forwardPos.x, forwardPos.y)) {
+    const target = board[forwardPos.y][forwardPos.x];
+    if (!target || target.type === 'chest') {
+      moves.push(forwardPos);
+    }
   }
 
   const captureDiagonals = {
@@ -158,14 +162,8 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     const capturePos = { x: x + diag.x, y: y + diag.y };
     if (isWithinBoard(capturePos.x, capturePos.y)) {
       const target = board[capturePos.y][capturePos.x];
-      if (target && target.type !== 'wall' && target.type !== 'sleeping_ally') {
-        if (target.type === 'piece') {
-          if (target.color !== piece.color) {
-            moves.push(capturePos);
-          }
-        } else {
-          moves.push(capturePos);
-        }
+      if (target?.type === 'piece' && target.color !== piece.color) {
+        moves.push(capturePos);
       }
     }
   });
