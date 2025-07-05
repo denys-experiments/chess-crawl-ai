@@ -28,6 +28,7 @@ export default function Home() {
   const [inventory, setInventory] = useState<{ pieces: Piece[], cosmetics: string[] }>({ pieces: [], cosmetics: [] });
   const [aiReasoning, setAiReasoning] = useState<string>('');
   const [isLevelComplete, setIsLevelComplete] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const { toast } = useToast();
@@ -48,13 +49,18 @@ export default function Home() {
     });
     setPlayerPieces(newPlayerPieces);
     setEnemyPieces(newEnemyPieces);
-    if (newEnemyPieces.length === 0 && level > 0) {
-      setIsLevelComplete(true);
+
+    if (level > 0) {
+      if (newEnemyPieces.length === 0) {
+        setIsLevelComplete(true);
+      } else if (newPlayerPieces.length > 0 && !newPlayerPieces.some(p => p.piece === 'King')) {
+        setIsGameOver(true);
+      }
     }
   }, [board, level]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (turn !== 'player' || isLoading) return;
+    if (turn !== 'player' || isLoading || isLevelComplete || isGameOver) return;
 
     const clickedTile = board[y][x];
 
@@ -80,7 +86,7 @@ export default function Home() {
       setSelectedPiece({ x, y });
       setAvailableMoves(getValidMoves({ x, y }, board));
     }
-  }, [turn, isLoading, selectedPiece, availableMoves, board]);
+  }, [turn, isLoading, selectedPiece, availableMoves, board, isLevelComplete, isGameOver]);
 
   const movePiece = (from: Position, to: Position) => {
     const newBoard = board.map(row => row.slice());
@@ -88,7 +94,6 @@ export default function Home() {
     
     let pieceToMove = {...piece};
 
-    // Handle special tiles
     const targetTile = newBoard[to.y][to.x];
     if (targetTile) {
       if(targetTile.type === 'chest') {
@@ -102,7 +107,6 @@ export default function Home() {
     newBoard[to.y][to.x] = { ...pieceToMove, x: to.x, y: to.y };
     newBoard[from.y][from.x] = null;
     
-    // Check for rescued allies
     checkForAllyRescue(to, newBoard);
 
     setBoard(newBoard);
@@ -163,7 +167,7 @@ export default function Home() {
     }
 
     let bestMove: { piece: Piece, move: Position } | null = null;
-    let highestValue = 0; // Start with 0 to only consider captures as "better"
+    let highestValue = 0;
 
     for (const { piece, move } of validEnemyMoves) {
         const targetTile = board[move.y][move.x];
@@ -176,7 +180,7 @@ export default function Home() {
                 case 'Bishop': moveValue = 3; break;
                 case 'Knight': moveValue = 3; break;
                 case 'Pawn': moveValue = 1; break;
-                case 'King': moveValue = 100; break; // Should be very high
+                case 'King': moveValue = 100; break;
             }
         }
 
@@ -186,12 +190,11 @@ export default function Home() {
         }
     }
 
-    // If no capture is available (bestMove is null), select a random move
     if (!bestMove) {
         bestMove = validEnemyMoves[Math.floor(Math.random() * validEnemyMoves.length)];
     }
 
-    if (!bestMove) { // Should not happen if validEnemyMoves is not empty, but as a safeguard.
+    if (!bestMove) {
         setIsLoading(false);
         setTurn('player');
         return;
@@ -215,10 +218,10 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (turn === 'enemy' && enemyPieces.length > 0) {
+    if (turn === 'enemy' && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
       runEnemyTurn();
     }
-  }, [turn, enemyPieces, runEnemyTurn]);
+  }, [turn, enemyPieces, runEnemyTurn, isGameOver, isLevelComplete]);
   
   const startNextLevel = (piecesToCarry: Piece[]) => {
     const nextLevel = level + 1;
@@ -226,6 +229,19 @@ export default function Home() {
     setBoard(initializeBoard(nextLevel, piecesToCarry));
     setIsLevelComplete(false);
     setTurn('player');
+  };
+
+  const restartGame = () => {
+    setLevel(1);
+    setBoard(initializeBoard(1));
+    setSelectedPiece(null);
+    setAvailableMoves([]);
+    setTurn('player');
+    setInventory({ pieces: [], cosmetics: [] });
+    setAiReasoning('');
+    setIsLevelComplete(false);
+    setIsGameOver(false);
+    setIsLoading(false);
   };
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
@@ -261,6 +277,10 @@ export default function Home() {
         playerPieces={playerPieces}
         onNextLevel={handleCarryOver}
       />
+      <GameOverDialog 
+        isOpen={isGameOver}
+        onRestart={restartGame}
+      />
     </main>
   );
 }
@@ -271,7 +291,9 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
     const selectablePieces = playerPieces.filter(p => p.piece !== 'King');
 
     useEffect(() => {
-        setSelectedPieces([]);
+        if (isOpen) {
+            setSelectedPieces([]);
+        }
     }, [isOpen]);
 
     const togglePieceSelection = (piece: Piece) => {
@@ -288,7 +310,6 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
 
     const handleConfirm = () => {
         onNextLevel(selectedPieces);
-        setSelectedPieces([]);
     }
 
     return (
@@ -309,11 +330,29 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                     ))}
                 </div>
                 <DialogFooter>
-                    <Button onClick={handleConfirm}>
+                    <Button onClick={handleConfirm} disabled={selectedPieces.length > maxCarryOver}>
                        Start Level {level + 1} ({selectedPieces.length}/{maxCarryOver} selected)
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
+}
+
+function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () => void; }) {
+  return (
+    <Dialog open={isOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Game Over</DialogTitle>
+          <DialogDescription>
+            Your King has been defeated. Better luck next time!
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button onClick={onRestart}>Play Again</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }

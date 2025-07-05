@@ -2,30 +2,34 @@ import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 
 function getRandomAllyPiece(level: number): PieceType {
   let availablePieces: PieceType[];
-  if (level < 3) {
-    // Lower levels get more common pieces
+  if (level <= 1) {
+    availablePieces = ['Pawn', 'Knight'];
+  } else if (level <= 2) {
     availablePieces = ['Pawn', 'Knight', 'Bishop'];
+  } else if (level <= 3) {
+    availablePieces = ['Knight', 'Bishop'];
   } else if (level < 5) {
-    // Mid levels get better pieces
     availablePieces = ['Knight', 'Bishop', 'Rook'];
   } else {
-    // High levels get the best pieces
     availablePieces = ['Bishop', 'Rook', 'Queen'];
   }
   return availablePieces[Math.floor(Math.random() * availablePieces.length)];
 }
 
+function shuffle<T>(array: T[]): T[] {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
 
 export function initializeBoard(level: number, carryOverPieces: Piece[] = []): Board {
   const board: Board = Array(8).fill(null).map(() => Array(8).fill(null));
-
-  // Place walls
-  if (level > 0) {
-    board[2][2] = { type: 'wall' };
-    board[2][5] = { type: 'wall' };
-    board[5][2] = { type: 'wall' };
-    board[5][5] = { type: 'wall' };
-  }
 
   // Handle player king placement to avoid duplicates
   const carriedOverKing = carryOverPieces.find(p => p.piece === 'King');
@@ -38,18 +42,20 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   // Place other initial carry-over pieces
   const otherCarryOverPieces = carryOverPieces.filter(p => p.piece !== 'King');
   let placedCount = 0;
-  const startPositions = [[7,3], [7,5], [6,4]];
+  const startPositions = [[7,3], [7,5], [6,4], [6,3], [6,5]];
   otherCarryOverPieces.forEach((piece, index) => {
     if(index < startPositions.length) {
       const [y, x] = startPositions[index];
-      board[y][x] = {...piece, x, y};
-      placedCount++;
+      if (!board[y][x]) {
+        board[y][x] = {...piece, x, y};
+        placedCount++;
+      }
     }
   });
 
 
   // Place pawns if no other pieces were carried over
-  if (placedCount === 0) {
+  if (placedCount === 0 && level === 1) {
     board[6][3] = { type: 'piece', piece: 'Pawn', color: 'white', x: 3, y: 6, id: 'wp1' };
     board[6][4] = { type: 'piece', piece: 'Pawn', color: 'white', x: 4, y: 6, id: 'wp2' };
   }
@@ -61,11 +67,43 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   if (level > 1) {
     board[1][5] = { type: 'piece', piece: 'Pawn', color: 'black', x: 5, y: 1, id: 'bp2'};
   }
+  if (level > 2) {
+    board[0][3] = { type: 'piece', piece: 'Knight', color: 'black', x: 3, y: 0, id: 'bn1'};
+  }
+   if (level > 3) {
+    board[0][5] = { type: 'piece', piece: 'Knight', color: 'black', x: 5, y: 0, id: 'bn2'};
+  }
 
+  // After placing fixed pieces, find all empty squares
+  const emptySquares: Position[] = [];
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      if (!board[y][x]) {
+        emptySquares.push({ x, y });
+      }
+    }
+  }
 
-  // Place chests and allies
-  board[0][0] = { type: 'chest', content: 'cosmetic' };
-  board[4][4] = { type: 'sleeping_ally', piece: getRandomAllyPiece(level) };
+  shuffle(emptySquares);
+
+  const numWalls = Math.min(4, 2 + Math.floor(level / 2));
+  const numChests = Math.min(2, 1 + Math.floor(level / 3));
+  const numAllies = Math.min(3, 1 + Math.floor(level / 2));
+
+  for (let i = 0; i < numWalls; i++) {
+      const pos = emptySquares.pop();
+      if (pos) board[pos.y][pos.x] = { type: 'wall' };
+  }
+
+  for (let i = 0; i < numChests; i++) {
+      const pos = emptySquares.pop();
+      if (pos) board[pos.y][pos.x] = { type: 'chest', content: 'cosmetic' };
+  }
+
+  for (let i = 0; i < numAllies; i++) {
+      const pos = emptySquares.pop();
+      if (pos) board[pos.y][pos.x] = { type: 'sleeping_ally', piece: getRandomAllyPiece(level) };
+  }
 
   return board;
 }
@@ -101,12 +139,10 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   const direction = piece.color === 'white' ? -1 : 1;
   const { x, y } = pos;
 
-  // Forward move
   if (isWithinBoard(x, y + direction) && !board[y + direction][x]) {
     moves.push({ x, y: y + direction });
   }
 
-  // Diagonal captures
   const captureOffsets = [-1, 1];
   captureOffsets.forEach(offset => {
     if (isWithinBoard(x + offset, y + direction)) {
@@ -155,7 +191,6 @@ function getKingMoves(pos: Position, piece: Piece, board: Board): Position[] {
         if(isWithinBoard(newX, newY)) {
             const target = board[newY][newX];
              if (!target || target.type !== 'wall' && (target.type !== 'piece' || target.color !== piece.color)) {
-                // For this game, we allow moving to unsafe squares, just mark them later
                 moves.push({x: newX, y: newY});
             }
         }
@@ -196,7 +231,6 @@ export function calculateSimpleEnemyMove(enemy: Piece, board: Board, playerPiece
   const availableMoves = getValidMoves({ x: enemy.x, y: enemy.y }, board);
   if (availableMoves.length === 0) return null;
 
-  // 1. Prioritize capture moves
   const captureMoves = availableMoves.filter(move => {
     const targetTile = board[move.y][move.x];
     return targetTile?.type === 'piece' && targetTile.color === 'white';
@@ -206,7 +240,6 @@ export function calculateSimpleEnemyMove(enemy: Piece, board: Board, playerPiece
     return captureMoves[0];
   }
 
-  // 2. If no capture, move towards the closest player piece
   if (playerPieces.length > 0) {
     let closestPlayerPiece: Piece | null = null;
     let minDistanceToPlayer = Infinity;
@@ -234,6 +267,5 @@ export function calculateSimpleEnemyMove(enemy: Piece, board: Board, playerPiece
     }
   }
 
-  // 3. If no other logic applies, make a random move
   return availableMoves[Math.floor(Math.random() * availableMoves.length)];
 }
