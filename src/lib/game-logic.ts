@@ -51,62 +51,53 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
   const kingX = Math.floor(width / 2);
   const kingY = height - 1;
 
-  const carriedOverKing = carryOverPieces.find(p => p.piece === 'King');
-  if (carriedOverKing) {
-    board[kingY][kingX] = { ...carriedOverKing, x: kingX, y: kingY };
+  // --- Start: Reworked Player Piece Placement ---
+
+  // 1. Place the King. It should always be present in carryOverPieces after level 1.
+  const king = carryOverPieces.find(p => p.piece === 'King');
+  if (king) {
+    board[kingY][kingX] = { ...king, x: kingX, y: kingY };
   } else {
+    // Fallback for level 1 or if something went wrong.
     board[kingY][kingX] = { type: 'piece', piece: 'King', color: 'white', x: kingX, y: kingY, id: `wk-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
   }
 
-  const otherCarryOverPieces = carryOverPieces.filter(p => p.piece !== 'King');
-  let placedCount = 0;
-  const startPositions = [
-    [kingY, kingX - 1], [kingY, kingX + 1], 
-    [kingY - 1, kingX], [kingY - 1, kingX - 1], [kingY - 1, kingX + 1]
-  ];
+  // 2. Place all other carried-over pieces.
+  const otherPiecesToCarry = carryOverPieces.filter(p => p.piece !== 'King');
+  const availablePlayerPositions = shuffle([
+      {x: kingX - 1, y: kingY}, {x: kingX + 1, y: kingY},
+      {x: kingX, y: kingY - 1}, {x: kingX - 1, y: kingY - 1}, {x: kingX + 1, y: kingY - 1}
+  ]);
 
-  otherCarryOverPieces.forEach((piece, index) => {
-    if(index < startPositions.length) {
-      const [y, x] = startPositions[index];
-      if (x >= 0 && x < width && y >= 0 && y < height && !board[y][x]) {
-        board[y][x] = {...piece, x, y};
-        placedCount++;
+  otherPiecesToCarry.forEach(piece => {
+      const pos = availablePlayerPositions.pop();
+      if (pos && isWithinBoard(pos.x, pos.y, board) && !board[pos.y][pos.x]) {
+          board[pos.y][pos.x] = { ...piece, x: pos.x, y: pos.y };
       }
-    }
   });
 
-  // If no pieces were carried over (besides the king), or if this is the very first level,
-  // ensure the player has some starting pieces.
-  if (placedCount === 0) {
-    // For level 1, provide two pawns. For subsequent levels where nothing was
-    // carried over, provide one pawn as a default.
-    const numPawns = level === 1 ? 2 : 1;
-    const pawnPositions = [
-        [kingY - 1, kingX - 1],
-        [kingY - 1, kingX + 1],
-        [kingY - 1, kingX],
-    ];
-
-    let pawnsPlaced = 0;
-    for (const [y, x] of pawnPositions) {
-        if (pawnsPlaced >= numPawns) break;
-        if (isWithinBoard(x, y, board) && !board[y][x]) {
-            board[y][x] = {
-                type: 'piece',
-                piece: 'Pawn',
-                color: 'white',
-                x: x,
-                y: y,
-                id: `wp${pawnsPlaced + 1}-${Date.now()}`,
-                direction: 'up',
-                name: generateRandomName(),
-                discoveredOnLevel: level,
-                captures: 0,
-            };
-            pawnsPlaced++;
-        }
-    }
+  // 3. Fallback: If no other pieces were carried over, add defaults.
+  if (otherPiecesToCarry.length === 0) {
+      if (level === 1) {
+          // For the first level, add two pawns.
+          const p1Pos = { x: kingX - 1, y: kingY - 1 };
+          if (isWithinBoard(p1Pos.x, p1Pos.y, board) && !board[p1Pos.y][p1Pos.x]) {
+              board[p1Pos.y][p1Pos.x] = { type: 'piece', piece: 'Pawn', color: 'white', x: p1Pos.x, y: p1Pos.y, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
+          }
+          const p2Pos = { x: kingX + 1, y: kingY - 1 };
+          if (isWithinBoard(p2Pos.x, p2Pos.y, board) && !board[p2Pos.y][p2Pos.x]) {
+              board[p2Pos.y][p2Pos.x] = { type: 'piece', piece: 'Pawn', color: 'white', x: p2Pos.x, y: p2Pos.y, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
+          }
+      } else {
+          // For subsequent levels, add one pawn.
+          const pPos = { x: kingX, y: kingY - 1 };
+           if (isWithinBoard(pPos.x, pPos.y, board) && !board[pPos.y][pPos.x]) {
+              board[pPos.y][pPos.x] = { type: 'piece', piece: 'Pawn', color: 'white', x: pPos.x, y: pPos.y, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: level, captures: 0 };
+          }
+      }
   }
+
+  // --- End: Reworked Player Piece Placement ---
 
 
   const factions = getFactionsForLevel(level, dimensions?.numFactions);
