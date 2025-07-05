@@ -65,7 +65,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
     return (
       <div 
         className={cn(
-          "w-full max-w-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20",
+          "w-full h-full bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20",
           "flex items-center justify-center p-2"
         )}
       >
@@ -102,7 +102,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
       onMouseDown={handleMouseDown}
       className={cn(
         "max-w-full max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
-        "overflow-auto"
+        "overflow-auto flex"
       )}
     >
       <div 
