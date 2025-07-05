@@ -258,6 +258,7 @@ export default function Home() {
     setBoard(newBoard);
     
     setTimeout(() => {
+        setSelectedPiece(null);
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
         onComplete();
     }, 300);
@@ -279,7 +280,6 @@ export default function Home() {
           setIsPlayerMoving(false);
           clickLock.current = false;
         });
-        setSelectedPiece(null);
       }
       return;
     }
