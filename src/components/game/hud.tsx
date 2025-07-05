@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
 
 interface GameHudProps {
@@ -35,6 +36,7 @@ interface GameHudProps {
   onCreatePiece: (pieceType: PieceType) => void;
   onPromotePawn: () => void;
   onAwardCosmetic: () => void;
+  debugLog: string;
 }
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
@@ -135,12 +137,13 @@ export function GameHud(props: GameHudProps) {
   );
 }
 
-function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCosmetic, onWinLevel }: {
+function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCosmetic, onWinLevel, debugLog }: {
   onRegenerateLevel: (width: number, height: number, numFactions: number) => void;
   onCreatePiece: (pieceType: PieceType) => void;
   onPromotePawn: () => void;
   onAwardCosmetic: () => void;
   onWinLevel: () => void;
+  debugLog: string;
 }) {
   const [width, setWidth] = useState('8');
   const [height, setHeight] = useState('8');
@@ -195,6 +198,16 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
         <Button onClick={onWinLevel} variant="outline" size="sm">Win Level</Button>
         <Button onClick={onPromotePawn} variant="outline" size="sm">Promote Pawn</Button>
         <Button onClick={onAwardCosmetic} variant="outline" size="sm">Award Cosmetic</Button>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="debug-output">Debug Log</Label>
+        <Textarea
+          id="debug-output"
+          readOnly
+          value={debugLog}
+          className="h-48 font-mono text-xs bg-background/50"
+          placeholder="Debug output will appear here..."
+        />
       </div>
     </div>
   )

@@ -42,7 +42,7 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
-export function initializeBoard(level: number, carryOverPieces: Piece[] = [], dimensions?: { width: number, height: number, numFactions?: number }): { board: Board, factions: string[] } {
+export function initializeBoard(level: number, playerPiecesToPlace: Piece[] = [], dimensions?: { width: number, height: number, numFactions?: number }): { board: Board, factions: string[] } {
   const width = dimensions?.width || Math.min(14, 7 + Math.floor(level / 2) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
   const height = dimensions?.height || Math.min(14, 7 + Math.floor(level / 3) + (level > 3 ? Math.floor(Math.random() * 3) - 1 : 0));
   
@@ -52,34 +52,8 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
   const kingY = height - 1;
 
   // --- Start: Reworked Player Piece Placement ---
-  let piecesToPlace: Piece[] = [];
-  const kingFromCarryOver = carryOverPieces.find(p => p.piece === 'King');
+  const piecesToPlace = playerPiecesToPlace;
 
-  // If the user carried over more than just the king, use those pieces.
-  if (carryOverPieces.length > 1) { 
-      piecesToPlace = [...carryOverPieces];
-  } else {
-      // This is the fallback logic. It runs if nothing was carried over, or only the king was.
-      
-      // 1. Add the king.
-      if (kingFromCarryOver) {
-          piecesToPlace.push(kingFromCarryOver);
-      } else {
-          // This should only happen on level 1.
-          piecesToPlace.push({ type: 'piece', piece: 'King', color: 'white', x: 0, y: 0, id: `wk-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: level, captures: 0 });
-      }
-
-      // 2. Add default pawns based on level.
-      if (level === 1) {
-          piecesToPlace.push({ type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 });
-          piecesToPlace.push({ type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 });
-      } else { 
-          // On subsequent levels, if no pieces were carried, add one new pawn for the current level.
-           piecesToPlace.push({ type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp-new-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: level, captures: 0 });
-      }
-  }
-
-  // Now, place the determined pieces on the board.
   const playerKing = piecesToPlace.find(p => p.piece === 'King');
   if (playerKing) {
       board[kingY][kingX] = { ...playerKing, x: kingX, y: kingY };

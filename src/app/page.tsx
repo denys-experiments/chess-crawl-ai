@@ -79,6 +79,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEnemyThinking, setIsEnemyThinking] = useState(false);
   const [isPlayerMoving, setIsPlayerMoving] = useState(false);
+  const [debugLog, setDebugLog] = useState('');
   const clickLock = useRef(false);
 
   const [activeEnemyFactions, setActiveEnemyFactions] = useState<string[]>(['black']);
@@ -87,6 +88,10 @@ export default function Home() {
   const currentTurn = useMemo(() => turnOrder[turnIndex % turnOrder.length], [turnOrder, turnIndex]);
   
   const { toast } = useToast();
+
+  const appendToDebugLog = useCallback((message: string) => {
+    setDebugLog(prev => `${prev}\n\n${message}`.trim());
+  }, []);
 
   const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
@@ -133,22 +138,28 @@ export default function Home() {
   
   const startNewGame = useCallback(() => {
     setIsLoading(true);
-    const { board: newBoard, factions } = initializeBoard(1);
+    const startingPieces: Piece[] = [
+        { type: 'piece', piece: 'King', color: 'white', x: 0, y: 0, id: `wk-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: 1, captures: 0 },
+        { type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 },
+        { type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 }
+    ];
+    let log = `--- STARTING NEW GAME (LEVEL 1) ---\n`;
+    log += `Initial pieces: ${startingPieces.length}\n`;
+    log += JSON.stringify(startingPieces.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
+    appendToDebugLog(log);
+    
+    const { board: newBoard, factions } = initializeBoard(1, startingPieces);
     checkForInitialRescues(newBoard);
     setBoard(newBoard);
     setActiveEnemyFactions(factions);
     setTurnIndex(0);
-  }, [checkForInitialRescues]);
+  }, [checkForInitialRescues, appendToDebugLog]);
   
   useEffect(() => {
     startNewGame();
   }, [startNewGame]);
   
   useEffect(() => {
-    // When the board changes for a new level, `isLoading` is true, which
-    // disables animations on the pieces for that render. This effect runs
-    // immediately after, setting `isLoading` to false so that subsequent
-    // moves during gameplay are animated correctly.
     if (isLoading) {
       setIsLoading(false);
     }
@@ -177,6 +188,13 @@ export default function Home() {
     });
     setPlayerPieces(newPlayerPieces);
     setEnemyPieces(newEnemyPieces);
+    
+    if (isLoading) {
+        let log = `--- LEVEL ${level} STARTED ---\n`;
+        log += `Player pieces on board: ${newPlayerPieces.length}\n`;
+        log += JSON.stringify(newPlayerPieces.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
+        appendToDebugLog(log);
+    }
 
     if (level > 0 && !isLoading) {
       if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0) {
@@ -185,9 +203,8 @@ export default function Home() {
         setIsGameOver(true);
       }
     }
-  }, [board, level, isLoading]);
+  }, [board, level, isLoading, appendToDebugLog]);
   
-  // Recalculate available moves whenever the selected piece or the board changes.
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
       setAvailableMoves(getValidMoves(selectedPiece, board));
@@ -275,7 +292,7 @@ export default function Home() {
     setBoard(newBoard);
     
     setTimeout(() => {
-        setSelectedPiece(null); // Deselect after animation
+        setSelectedPiece(null);
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
         onComplete();
     }, 300);
@@ -286,7 +303,6 @@ export default function Home() {
 
     const isPlayerTurn = currentTurn === 'player' && !isEnemyThinking;
 
-    // Case 1: A piece is selected and the click is on a valid move tile.
     if (selectedPiece && availableMoves.some(move => move.x === x && move.y === y)) {
       if (isPlayerTurn) {
         setIsPlayerMoving(true);
@@ -294,7 +310,6 @@ export default function Home() {
         
         const from = { ...selectedPiece };
         
-        // Optimistically deselect for better UI feel
         setSelectedPiece(null);
         
         movePiece(from, { x, y }, () => {
@@ -307,7 +322,6 @@ export default function Home() {
 
     const clickedTile = board[y][x];
 
-    // Case 2: The click is on a friendly piece. Can be done on any turn.
     if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
       if (selectedPiece && selectedPiece.x === x && selectedPiece.y === y) {
         setSelectedPiece(null);
@@ -317,7 +331,6 @@ export default function Home() {
       return;
     }
 
-    // Case 3: Click is anywhere else (and it's player's turn).
     if(isPlayerTurn) {
         setSelectedPiece(null);
     }
@@ -499,40 +512,49 @@ export default function Home() {
 
   const restartGame = () => {
     setIsLoading(true);
+    setDebugLog('');
     setLevel(1);
-    const { board: newBoard, factions } = initializeBoard(1);
-    checkForInitialRescues(newBoard);
-    setBoard(newBoard);
-    setActiveEnemyFactions(factions);
     setSelectedPiece(null);
     setAvailableMoves([]);
-    setTurnIndex(0);
     setInventory({ pieces: [], cosmetics: [] });
     setAiReasoning('');
     setIsLevelComplete(false);
     setIsGameOver(false);
+    startNewGame();
   };
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
       const king = playerPieces.find(p => p.piece === 'King');
       
-      // Create fresh copies for the selected pieces, giving them new unique IDs.
       const clonedCarriedPieces = piecesToCarry.map(p => ({
           ...p,
           id: `${p.piece.toLowerCase()}-${Date.now()}-${Math.random()}`
       }));
       
-      // Create a fresh copy for the king, giving it a new unique ID.
       const clonedKing = king ? [{
           ...king, 
           id: `wk-${Date.now()}`
       }] : [];
 
-      // Combine them into the final list for the next level.
-      const allCarriedPieces = [...clonedCarriedPieces, ...clonedKing];
+      let finalPiecesForNextLevel = [...clonedCarriedPieces, ...clonedKing];
 
-      setInventory(prev => ({...prev, pieces: allCarriedPieces}));
-      startNextLevel(allCarriedPieces);
+      if (finalPiecesForNextLevel.length <= 1 && level > 0) {
+           finalPiecesForNextLevel.push({
+              type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, 
+              id: `wp-new-${level+1}-${Date.now()}`, direction: 'up', 
+              name: generateRandomName(), discoveredOnLevel: level + 1, captures: 0
+          });
+      }
+
+      let log = `--- CARRY OVER TO LEVEL ${level + 1} ---\n`;
+      log += `Selected pieces in dialog: ${piecesToCarry.length}\n`;
+      log += JSON.stringify(piecesToCarry.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
+      log += `\n\nFinal pieces for next level: ${finalPiecesForNextLevel.length}\n`;
+      log += JSON.stringify(finalPiecesForNextLevel.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
+      appendToDebugLog(log);
+      
+      setInventory(prev => ({...prev, pieces: finalPiecesForNextLevel}));
+      startNextLevel(finalPiecesForNextLevel);
   };
 
   const selectedPieceData = useMemo(() => {
@@ -690,6 +712,7 @@ export default function Home() {
           onCreatePiece={handleCreatePiece}
           onPromotePawn={handlePromotePawn}
           onAwardCosmetic={handleAwardCosmetic}
+          debugLog={debugLog}
         />
       </div>
       <Toaster />
