@@ -125,27 +125,23 @@ export default function Home() {
     
     let pieceToMove = {...piece};
 
-    if (pieceToMove.piece === 'Pawn') {
-      const isMoveToEmptySquare = !targetTile;
-  
-      if (isMoveToEmptySquare) {
-        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-        let isStandardForwardMove = false;
-        if (currentDirection === 'up' && to.x === from.x && to.y === from.y - 1) isStandardForwardMove = true;
-        else if (currentDirection === 'down' && to.x === from.x && to.y === from.y + 1) isStandardForwardMove = true;
-        else if (currentDirection === 'left' && to.y === from.y && to.x === from.x - 1) isStandardForwardMove = true;
-        else if (currentDirection === 'right' && to.y === from.y && to.x === from.x + 1) isStandardForwardMove = true;
-  
-        if (!isStandardForwardMove) {
-          if (to.x > from.x) {
-            pieceToMove.direction = 'right';
-          } else if (to.x < from.x) {
-            pieceToMove.direction = 'left';
-          } else if (to.y > from.y) {
-            pieceToMove.direction = 'down';
-          } else if (to.y < from.y) {
-            pieceToMove.direction = 'up';
-          }
+    if (pieceToMove.piece === 'Pawn' && !targetTile) {
+      const currentDirection = pieceToMove.direction || (piece.color === 'white' ? 'up' : 'down');
+      const isStandardForwardMove = 
+        (currentDirection === 'up' && to.x === from.x && to.y === from.y - 1) ||
+        (currentDirection === 'down' && to.x === from.x && to.y === from.y + 1) ||
+        (currentDirection === 'left' && to.y === from.y && to.x === from.x - 1) ||
+        (currentDirection === 'right' && to.y === from.y && to.x === from.x + 1);
+
+      if (!isStandardForwardMove) {
+        if (to.x > from.x) {
+          pieceToMove.direction = 'right';
+        } else if (to.x < from.x) {
+          pieceToMove.direction = 'left';
+        } else if (to.y > from.y) {
+          pieceToMove.direction = 'down';
+        } else if (to.y < from.y) {
+          pieceToMove.direction = 'up';
         }
       }
     }
@@ -270,28 +266,25 @@ export default function Home() {
     const newBoard = board.map(row => row.slice());
     let pieceToMove = { ...(newBoard[from.y][from.x] as Piece) };
     
-    if (pieceToMove.piece === 'Pawn') {
-        const isMoveToEmptySquare = !targetTile;
-        if (isMoveToEmptySquare) {
-            const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-            let isStandardForwardMove = false;
-            if (currentDirection === 'up' && move.x === from.x && move.y === from.y - 1) isStandardForwardMove = true;
-            else if (currentDirection === 'down' && move.x === from.x && move.y === from.y + 1) isStandardForwardMove = true;
-            else if (currentDirection === 'left' && move.y === from.y && move.x === from.x - 1) isStandardForwardMove = true;
-            else if (currentDirection === 'right' && move.y === from.y && move.x === from.x + 1) isStandardForwardMove = true;
-            
-            if (!isStandardForwardMove) {
-                if (move.x > from.x) {
-                    pieceToMove.direction = 'right';
-                } else if (move.x < from.x) {
-                    pieceToMove.direction = 'left';
-                } else if (move.y > from.y) {
-                    pieceToMove.direction = 'down';
-                } else if (move.y < from.y) {
-                    pieceToMove.direction = 'up';
-                }
-            }
+    if (pieceToMove.piece === 'Pawn' && !targetTile) {
+      const currentDirection = pieceToMove.direction || (piece.color === 'white' ? 'up' : 'down');
+      const isStandardForwardMove = 
+        (currentDirection === 'up' && move.x === from.x && move.y === from.y - 1) ||
+        (currentDirection === 'down' && move.x === from.x && move.y === from.y + 1) ||
+        (currentDirection === 'left' && move.y === from.y && move.x === from.x - 1) ||
+        (currentDirection === 'right' && move.y === from.y && move.x === from.x + 1);
+
+      if (!isStandardForwardMove) {
+        if (move.x > from.x) {
+            pieceToMove.direction = 'right';
+        } else if (move.x < from.x) {
+            pieceToMove.direction = 'left';
+        } else if (move.y > from.y) {
+            pieceToMove.direction = 'down';
+        } else if (move.y < from.y) {
+            pieceToMove.direction = 'up';
         }
+      }
     }
 
     newBoard[move.y][move.x] = { ...pieceToMove, x: move.x, y: move.y };
@@ -464,3 +457,5 @@ function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () 
     </Dialog>
   );
 }
+
+    
