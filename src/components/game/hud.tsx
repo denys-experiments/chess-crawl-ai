@@ -28,7 +28,7 @@ interface GameHudProps {
   inventory: { pieces: Piece[], cosmetics: string[] };
   aiReasoning: string;
   isEnemyThinking: boolean;
-  onRegenerateLevel: (width: number, height: number) => void;
+  onRegenerateLevel: (width: number, height: number, numFactions: number) => void;
   onWinLevel: () => void;
   onCreatePiece: (pieceType: PieceType) => void;
   onPromotePawn: () => void;
@@ -105,7 +105,7 @@ export function GameHud(props: GameHudProps) {
 }
 
 function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCosmetic, onWinLevel }: {
-  onRegenerateLevel: (width: number, height: number) => void;
+  onRegenerateLevel: (width: number, height: number, numFactions: number) => void;
   onCreatePiece: (pieceType: PieceType) => void;
   onPromotePawn: () => void;
   onAwardCosmetic: () => void;
@@ -113,14 +113,17 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
 }) {
   const [width, setWidth] = useState('8');
   const [height, setHeight] = useState('8');
+  const [numFactions, setNumFactions] = useState('1');
   const [pieceType, setPieceType] = useState<PieceType>('Knight');
 
   const handleRegenerate = () => {
     const parsedWidth = parseInt(width, 10);
     const parsedHeight = parseInt(height, 10);
+    const parsedFactions = parseInt(numFactions, 10);
     const finalWidth = !isNaN(parsedWidth) && parsedWidth >= 5 ? parsedWidth : 8;
     const finalHeight = !isNaN(parsedHeight) && parsedHeight >= 5 ? parsedHeight : 8;
-    onRegenerateLevel(finalWidth, finalHeight);
+    const finalFactions = !isNaN(parsedFactions) && parsedFactions > 0 ? parsedFactions : 1;
+    onRegenerateLevel(finalWidth, finalHeight, finalFactions);
   };
 
   return (
@@ -128,10 +131,14 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
        <h4 className="font-headline text-lg text-primary">Cheat Panel</h4>
       <div className="space-y-2">
         <Label htmlFor="width-input">Regenerate Level</Label>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           <Input id="width-input" type="number" value={width} onChange={e => setWidth(e.target.value)} className="w-16" />
           <span className="text-muted-foreground">x</span>
           <Input type="number" value={height} onChange={e => setHeight(e.target.value)} className="w-16" />
+          <div className="flex items-center gap-2">
+            <Label htmlFor="factions-input" className="text-muted-foreground">Factions:</Label>
+            <Input id="factions-input" type="number" value={numFactions} onChange={e => setNumFactions(e.target.value)} className="w-14" />
+          </div>
           <Button onClick={handleRegenerate} size="sm">Go</Button>
         </div>
       </div>

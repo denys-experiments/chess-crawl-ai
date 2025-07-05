@@ -259,6 +259,7 @@ export default function Home() {
     
     setTimeout(() => {
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+        setSelectedPiece(null);
         onComplete();
     }, 300);
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
@@ -273,9 +274,10 @@ export default function Home() {
       if (isPlayerTurn) {
         setIsPlayerMoving(true);
         clickLock.current = true;
-
+        
         const from = selectedPiece;
-        setSelectedPiece(null);
+        setSelectedPiece(null); // Deselect immediately for better feel
+        
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
           clickLock.current = false;
@@ -297,9 +299,7 @@ export default function Home() {
     }
 
     // Case 3: Click is anywhere else.
-    if (isPlayerTurn) {
-      setSelectedPiece(null);
-    }
+    setSelectedPiece(null);
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece, isPlayerMoving]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
@@ -498,11 +498,11 @@ export default function Home() {
 
   // --- CHEAT FUNCTIONS ---
 
-  const handleRegenerateLevel = (width: number, height: number) => {
+  const handleRegenerateLevel = (width: number, height: number, numFactions: number) => {
     if (!board) return;
     setIsLoading(true);
     const king = playerPieces.find(p => p.piece === 'King');
-    const { board: newBoard, factions } = initializeBoard(level, king ? [king] : [], { width, height });
+    const { board: newBoard, factions } = initializeBoard(level, king ? [king] : [], { width, height, numFactions });
     checkForInitialRescues(newBoard);
     setBoard(newBoard);
     setActiveEnemyFactions(factions);
@@ -512,7 +512,7 @@ export default function Home() {
     setAiReasoning('');
     setIsLevelComplete(false);
     setIsGameOver(false);
-    toast({ title: "Cheat Activated!", description: `Level regenerated to ${width}x${height}.` });
+    toast({ title: "Cheat Activated!", description: `Level regenerated to ${width}x${height} with ${factions.length} faction(s).` });
   }
 
   const handleWinLevel = () => {

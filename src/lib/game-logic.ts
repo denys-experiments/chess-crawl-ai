@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -48,7 +41,7 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
-export function initializeBoard(level: number, carryOverPieces: Piece[] = [], dimensions?: { width: number, height: number }): { board: Board, factions: string[] } {
+export function initializeBoard(level: number, carryOverPieces: Piece[] = [], dimensions?: { width: number, height: number, numFactions?: number }): { board: Board, factions: string[] } {
   const width = dimensions?.width || Math.min(14, 7 + Math.floor(level / 2) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
   const height = dimensions?.height || Math.min(14, 7 + Math.floor(level / 3) + (level > 3 ? Math.floor(Math.random() * 3) - 1 : 0));
   
@@ -86,7 +79,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
     if(kingY-1 >= 0) board[kingY-1][kingX] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX, y: kingY-1, id: `wp2-${Date.now()}`, direction: 'up' };
   }
 
-  const factions = getFactionsForLevel(level);
+  const factions = getFactionsForLevel(level, dimensions?.numFactions);
 
   // Define potential anchor points for faction starting positions
   const allAnchorPoints = [
@@ -438,9 +431,3 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
-
-
-
-
-
-

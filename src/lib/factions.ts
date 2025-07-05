@@ -4,9 +4,14 @@ export const ENEMY_FACTION_COLORS: string[] = ['black', 'orange', 'cyan', 'red',
 /**
  * Determines the enemy factions present for a given level.
  * @param level The current game level.
+ * @param count Optional. If provided, returns a specific number of factions.
  * @returns An array of faction color strings.
  */
-export function getFactionsForLevel(level: number): string[] {
+export function getFactionsForLevel(level: number, count?: number): string[] {
+  if (count) {
+    return ENEMY_FACTION_COLORS.slice(0, Math.min(count, ENEMY_FACTION_COLORS.length));
+  }
+
   if (level === 1) {
     return [ENEMY_FACTION_COLORS[0]];
   }
