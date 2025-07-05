@@ -75,10 +75,39 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
     }
   });
 
-  if (placedCount === 0 && level === 1) {
-    if(kingX-1 >= 0 && kingY-1 >= 0) board[kingY-1][kingX-1] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX-1, y: kingY-1, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
-    if(kingY-1 >= 0) board[kingY-1][kingX] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX, y: kingY-1, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
+  // If no pieces were carried over (besides the king), or if this is the very first level,
+  // ensure the player has some starting pieces.
+  if (placedCount === 0) {
+    // For level 1, provide two pawns. For subsequent levels where nothing was
+    // carried over, provide one pawn as a default.
+    const numPawns = level === 1 ? 2 : 1;
+    const pawnPositions = [
+        [kingY - 1, kingX - 1],
+        [kingY - 1, kingX + 1],
+        [kingY - 1, kingX],
+    ];
+
+    let pawnsPlaced = 0;
+    for (const [y, x] of pawnPositions) {
+        if (pawnsPlaced >= numPawns) break;
+        if (isWithinBoard(x, y, board) && !board[y][x]) {
+            board[y][x] = {
+                type: 'piece',
+                piece: 'Pawn',
+                color: 'white',
+                x: x,
+                y: y,
+                id: `wp${pawnsPlaced + 1}-${Date.now()}`,
+                direction: 'up',
+                name: generateRandomName(),
+                discoveredOnLevel: level,
+                captures: 0,
+            };
+            pawnsPlaced++;
+        }
+    }
   }
+
 
   const factions = getFactionsForLevel(level, dimensions?.numFactions);
 
