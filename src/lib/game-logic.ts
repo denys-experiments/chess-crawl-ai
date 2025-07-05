@@ -169,3 +169,49 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
+
+export function calculateSimpleEnemyMove(enemy: Piece, board: Board, playerPieces: Piece[]): Position | null {
+  const availableMoves = getValidMoves({ x: enemy.x, y: enemy.y }, board);
+  if (availableMoves.length === 0) return null;
+
+  // 1. Prioritize capture moves
+  const captureMoves = availableMoves.filter(move => {
+    const targetTile = board[move.y][move.x];
+    return targetTile?.type === 'piece' && targetTile.color === 'white';
+  });
+
+  if (captureMoves.length > 0) {
+    return captureMoves[0];
+  }
+
+  // 2. If no capture, move towards the closest player piece
+  if (playerPieces.length > 0) {
+    let closestPlayerPiece: Piece | null = null;
+    let minDistanceToPlayer = Infinity;
+
+    for (const playerPiece of playerPieces) {
+      const distance = Math.abs(playerPiece.x - enemy.x) + Math.abs(playerPiece.y - enemy.y);
+      if (distance < minDistanceToPlayer) {
+        minDistanceToPlayer = distance;
+        closestPlayerPiece = playerPiece;
+      }
+    }
+    
+    if (closestPlayerPiece) {
+        let bestMove: Position | null = null;
+        let minDistanceToClosestPlayer = Infinity;
+        
+        for (const move of availableMoves) {
+            const distance = Math.abs(move.x - closestPlayerPiece.x) + Math.abs(move.y - closestPlayerPiece.y);
+            if (distance < minDistanceToClosestPlayer) {
+                minDistanceToClosestPlayer = distance;
+                bestMove = move;
+            }
+        }
+        if (bestMove) return bestMove;
+    }
+  }
+
+  // 3. If no other logic applies, make a random move
+  return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+}

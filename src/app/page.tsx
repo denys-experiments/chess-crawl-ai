@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Piece, Board, Position, SpecialTile } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
-import { initializeBoard, getValidMoves } from '@/lib/game-logic';
-import { calculateEnemyMove } from '@/ai/flows/enemy-ai-move-calculation';
+import { initializeBoard, getValidMoves, calculateSimpleEnemyMove } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -120,62 +119,51 @@ export default function Home() {
   const runEnemyTurn = useCallback(async () => {
     setIsLoading(true);
     setAiReasoning('');
-    let currentBoard = board;
+    let tempBoard = board.map(r => r.slice()); // Work on a copy
+    let tempPlayerPieces = [...playerPieces];
     
-    for (const enemy of enemyPieces) {
-      const availableMoves = getValidMoves({ x: enemy.x, y: enemy.y }, currentBoard);
-      if (availableMoves.length > 0) {
-        try {
-          const boardStateString = JSON.stringify(currentBoard);
-          const playerPositions = playerPieces.map(p => `${p.piece} at ${String.fromCharCode(97 + p.x)}${8 - p.y}`);
+    const enemiesToMove: Piece[] = [];
+    tempBoard.forEach(row => row.forEach(tile => {
+        if(tile?.type === 'piece' && tile.color === 'black') {
+            enemiesToMove.push(tile);
+        }
+    }));
 
-          const result = await calculateEnemyMove({
-            boardState: boardStateString,
-            enemyPiecePosition: `${enemy.piece} at ${String.fromCharCode(97 + enemy.x)}${8 - enemy.y}`,
-            playerPiecePositions: playerPositions,
-            availableMoves: availableMoves.map(m => `${String.fromCharCode(97 + m.x)}${8 - m.y}`),
-            difficulty: 'easy',
-          });
-          
-          const newAiReasoning = `Enemy ${enemy.piece}: ${result.reasoning}\n`;
+
+    for (const enemy of enemiesToMove) {
+      const currentEnemyTile = tempBoard[enemy.y][enemy.x];
+      if (!currentEnemyTile || currentEnemyTile.type !== 'piece' || currentEnemyTile.id !== enemy.id) {
+          continue;
+      }
+
+      const availableMoves = getValidMoves({ x: enemy.x, y: enemy.y }, tempBoard);
+      if (availableMoves.length > 0) {
+        const bestMovePos = calculateSimpleEnemyMove(enemy, tempBoard, tempPlayerPieces);
+
+        if (bestMovePos) {
+          const newAiReasoning = `Enemy ${enemy.piece} moves to ${String.fromCharCode(97 + bestMovePos.x)}${8 - bestMovePos.y}.\n`;
           setAiReasoning(prev => prev + newAiReasoning);
 
-          const moveNotation = result.bestMove;
-          const toX = moveNotation.charCodeAt(0) - 97;
-          const toY = 8 - parseInt(moveNotation.slice(1));
-
-          const bestMovePos = availableMoves.find(m => m.x === toX && m.y === toY);
-
-          if (bestMovePos) {
-            const newBoard = currentBoard.map(row => row.slice());
-            const pieceToMove = newBoard[enemy.y][enemy.x];
-            if (pieceToMove) {
-              newBoard[bestMovePos.y][bestMovePos.x] = { ...pieceToMove, x: bestMovePos.x, y: bestMovePos.y };
-              newBoard[enemy.y][enemy.x] = null;
-              currentBoard = newBoard;
-            }
+          const pieceToMove = tempBoard[enemy.y][enemy.x];
+          
+          const capturedTile = tempBoard[bestMovePos.y][bestMovePos.x];
+          if(capturedTile?.type === 'piece' && capturedTile.color === 'white') {
+              tempPlayerPieces = tempPlayerPieces.filter(p => p.id !== capturedTile.id);
           }
-        } catch (error) {
-          console.error("AI move calculation failed:", error);
-          // Fallback to random move
-           const randomMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
-            const newBoard = currentBoard.map(row => row.slice());
-            const pieceToMove = newBoard[enemy.y][enemy.x];
-            if (pieceToMove) {
-                newBoard[randomMove.y][randomMove.x] = { ...pieceToMove, x: randomMove.x, y: randomMove.y };
-                newBoard[enemy.y][enemy.x] = null;
-                currentBoard = newBoard;
-                 setAiReasoning(prev => prev + `Enemy ${enemy.piece} at ${String.fromCharCode(97 + enemy.x)}${8-enemy.y} moved randomly to ${String.fromCharCode(97 + randomMove.x)}${8-randomMove.y} due to an error.\n`);
-            }
+
+          if (pieceToMove) {
+            tempBoard[bestMovePos.y][bestMovePos.x] = { ...pieceToMove, x: bestMovePos.x, y: bestMovePos.y };
+            tempBoard[enemy.y][enemy.x] = null;
+          }
         }
-        await new Promise(res => setTimeout(res, 500)); // Pause between moves
       }
+      await new Promise(res => setTimeout(res, 500)); // Pause between moves
     }
 
-    setBoard(currentBoard);
+    setBoard(tempBoard);
     setIsLoading(false);
     setTurn('player');
-  }, [board, enemyPieces, playerPieces]);
+  }, [board, playerPieces]);
 
 
   useEffect(() => {
