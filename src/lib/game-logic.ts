@@ -26,7 +26,7 @@ function getRandomAllyPiece(level: number): PieceType {
     random -= piece.weight;
   }
   
-  return availablePieces[availablePieces.length - 1].piece;
+  return availablePieces.length > 0 ? availablePieces[availablePieces.length - 1].piece : 'Pawn';
 }
 
 function shuffle<T>(array: T[]): T[] {
@@ -40,9 +40,9 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
-export function initializeBoard(level: number, carryOverPieces: Piece[] = []): Board {
-  const width = Math.min(14, 7 + Math.floor(level / 2) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
-  const height = Math.min(14, 7 + Math.floor(level / 3) + (level > 3 ? Math.floor(Math.random() * 3) - 1 : 0));
+export function initializeBoard(level: number, carryOverPieces: Piece[] = [], dimensions?: { width: number, height: number }): Board {
+  const width = dimensions?.width || Math.min(14, 7 + Math.floor(level / 2) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
+  const height = dimensions?.height || Math.min(14, 7 + Math.floor(level / 3) + (level > 3 ? Math.floor(Math.random() * 3) - 1 : 0));
   
   const board: Board = Array(height).fill(null).map(() => Array(width).fill(null));
 
@@ -129,7 +129,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   return board;
 }
 
-function isWithinBoard(x: number, y: number, board: Board): boolean {
+export function isWithinBoard(x: number, y: number, board: Board): boolean {
   const height = board.length;
   if (height === 0) return false;
   const width = board[0].length;
@@ -210,7 +210,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     if (!isWithinBoard(obstaclePos.x, obstaclePos.y, board)) {
       isBlocked = true;
     } else {
-      const obstacle = board[obstaclePos.y][obstaclePos.x];
+      const obstacle = board[obstaclePos.y][obstaclePos.y];
       if (obstacle && obstacle.type !== 'sleeping_ally') {
         isBlocked = true;
       }

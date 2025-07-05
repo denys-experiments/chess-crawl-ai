@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Piece, Board, Position, PieceType } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
-import { initializeBoard, getValidMoves } from '@/lib/game-logic';
+import { initializeBoard, getValidMoves, isWithinBoard } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -193,7 +193,7 @@ export default function Home() {
         }
     }
 
-    if (targetTile?.type === 'chest' || (targetTile?.type === 'chest' && isOrthogonalMove(from, to))) {
+    if (targetTile?.type === 'chest') {
       if (pieceToMove.piece === 'Pawn') {
         const newPieceType = getPromotionPiece(level, playerPieces);
         newPieceState = {
@@ -233,10 +233,6 @@ export default function Home() {
     setAvailableMoves([]);
     setTurn('enemy');
   };
-
-  function isOrthogonalMove(from: Position, to: Position) {
-    return from.x === to.x || from.y === to.y;
-  }
 
   const checkForAllyRescue = (pos: Position, currentBoard: Board) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
@@ -291,7 +287,7 @@ export default function Home() {
         const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
         const validEnemyMoves = moves.filter(move => {
             const targetTile = board[move.y][move.x];
-            return targetTile?.type !== 'chest' && targetTile?.type !== 'sleeping_ally';
+            return targetTile?.type !== 'sleeping_ally';
         });
 
         for (const move of validEnemyMoves) {
@@ -308,6 +304,15 @@ export default function Home() {
                     case 'King': score += 1000; break;
                 }
             }
+            
+            if (targetTile?.type === 'chest') {
+                if (enemy.piece === 'Pawn') {
+                    score += 15; // Pawns are encouraged to open chests for promotion
+                } else {
+                    score -= 5; // Other pieces are discouraged from opening chests
+                }
+            }
+
 
             if (playerKing) {
                 const currentDist = Math.abs(enemy.x - playerKing.x) + Math.abs(enemy.y - playerKing.y);
@@ -334,7 +339,7 @@ export default function Home() {
                 score -= 5;
             }
             
-            score += Math.random() * 0.5;
+            score += Math.random() * 2; // Increased randomness to avoid loops
 
             allPossibleMoves.push({ piece: enemy, move, score });
         }
@@ -439,6 +444,116 @@ export default function Home() {
       startNextLevel(allCarriedPieces);
   };
 
+  // --- CHEAT FUNCTIONS ---
+
+  const handleRegenerateLevel = (width: number, height: number) => {
+    if (!board) return;
+    setIsLoading(true);
+    const king = playerPieces.find(p => p.piece === 'King');
+    const newBoard = initializeBoard(level, king ? [king] : [], { width, height });
+    checkForInitialRescues(newBoard);
+    setBoard(newBoard);
+    setSelectedPiece(null);
+    setAvailableMoves([]);
+    setTurn('player');
+    setAiReasoning('');
+    setIsLevelComplete(false);
+    setIsGameOver(false);
+    setIsLoading(false);
+    toast({ title: "Cheat Activated!", description: `Level regenerated to ${width}x${height}.` });
+  }
+
+  const handleWinLevel = () => {
+    setIsLevelComplete(true);
+    toast({ title: "Cheat Activated!", description: "You've won the level!" });
+  }
+
+  const handleCreatePiece = (pieceType: PieceType) => {
+    if (!board) return;
+    const king = playerPieces.find(p => p.piece === 'King');
+    if (!king) {
+        toast({ title: "Cheat Failed", description: "Player King not found.", variant: "destructive" });
+        return;
+    }
+    const { x: kingX, y: kingY } = king;
+    const possibleSpawns: Position[] = [
+        { x: kingX - 1, y: kingY }, { x: kingX + 1, y: kingY },
+        { x: kingX, y: kingY - 1 }, { x: kingX, y: kingY + 1 },
+        { x: kingX - 1, y: kingY - 1 }, { x: kingX + 1, y: kingY - 1 },
+        { x: kingX - 1, y: kingY + 1 }, { x: kingX + 1, y: kingY + 1 },
+    ].filter(p => isWithinBoard(p.x, p.y, board) && !board[p.y][p.x]);
+
+    if (possibleSpawns.length === 0) {
+        toast({ title: "Cheat Failed", description: "No empty space near the King to spawn a piece.", variant: "destructive" });
+        return;
+    }
+
+    const spawnPos = possibleSpawns[0];
+    const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
+    newBoard[spawnPos.y][spawnPos.x] = {
+        type: 'piece',
+        piece: pieceType,
+        color: 'white',
+        x: spawnPos.x,
+        y: spawnPos.y,
+        id: `${pieceType}-${Date.now()}`
+    };
+    setBoard(newBoard);
+    toast({ title: "Cheat Activated!", description: `A friendly ${pieceType} has appeared.` });
+  }
+
+  const handlePromotePawn = () => {
+    if (!board) return;
+    const pawns = playerPieces.filter(p => p.piece === 'Pawn');
+    if (pawns.length === 0) {
+        toast({ title: "Cheat Failed", description: "No player pawns available to promote.", variant: "destructive" });
+        return;
+    }
+    const randomPawn = pawns[Math.floor(Math.random() * pawns.length)];
+    const newPieceType = getPromotionPiece(level, playerPieces);
+    
+    const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
+    const pawnToPromote = newBoard[randomPawn.y][randomPawn.x];
+    if (pawnToPromote?.type === 'piece') {
+        (newBoard[randomPawn.y][randomPawn.x] as Piece) = {
+            ...pawnToPromote,
+            piece: newPieceType,
+            direction: undefined,
+        };
+        setBoard(newBoard);
+        toast({ title: "Cheat Activated!", description: `A pawn has been promoted to a ${newPieceType}.` });
+    }
+  }
+
+  const handleAwardCosmetic = () => {
+    if (!board) return;
+    const nonPawns = playerPieces.filter(p => p.piece !== 'Pawn');
+    if (nonPawns.length === 0) {
+        toast({ title: "Cheat Failed", description: "No non-pawn pieces available to award cosmetic.", variant: "destructive" });
+        return;
+    }
+    const randomPiece = nonPawns[Math.floor(Math.random() * nonPawns.length)];
+
+    const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
+    const cosmeticDisplayNames: { [key: string]: string } = {
+        sunglasses: 'sunglasses',
+        tophat: 'a top hat',
+        partyhat: 'a party hat',
+        bowtie: 'a bowtie',
+        heart: 'a heart',
+        star: 'a star',
+    };
+    const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
+
+    const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
+    const pieceToDecorate = newBoard[randomPiece.y][randomPiece.x];
+    if(pieceToDecorate?.type === 'piece') {
+        (newBoard[randomPiece.y][randomPiece.x] as Piece).cosmetic = newCosmetic;
+        setBoard(newBoard);
+        toast({ title: "Cheat Activated!", description: `Your ${pieceToDecorate.piece} received ${cosmeticDisplayNames[newCosmetic]}.` });
+    }
+  }
+
   if (isLoading || !board) {
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
@@ -464,6 +579,11 @@ export default function Home() {
           inventory={inventory}
           aiReasoning={aiReasoning}
           isEnemyThinking={isEnemyThinking}
+          onRegenerateLevel={handleRegenerateLevel}
+          onWinLevel={handleWinLevel}
+          onCreatePiece={handleCreatePiece}
+          onPromotePawn={handlePromotePawn}
+          onAwardCosmetic={handleAwardCosmetic}
         />
       </div>
       <Toaster />
