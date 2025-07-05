@@ -63,10 +63,9 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   const isLargeBoard = width > viewboxSize || height > viewboxSize;
 
   // Determine the number of cells to fit into the viewport for each axis.
-  // If the board dimension is > viewboxSize, we ensure viewboxSize cells are visible.
-  // Otherwise, we fit the actual board dimension to fill the space.
-  const displayWidth = width > viewboxSize ? viewboxSize : width;
-  const displayHeight = height > viewboxSize ? viewboxSize : height;
+  // This is the actual board size, clamped to a maximum of `viewboxSize`.
+  const displayWidth = Math.min(width, viewboxSize);
+  const displayHeight = Math.min(height, viewboxSize);
   
   // Calculate the cell size. It must be a single value to maintain a 1:1 aspect ratio.
   // We take the smaller of the possible sizes to ensure everything fits as required.
@@ -81,16 +80,17 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
       className={cn(
         // This is the VIEWPORT. It fills available space and provides scrolling.
         "w-full h-full bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20",
-        // For large boards, we remove vertical centering to prevent scroll issues. For small boards, we center fully.
-        isLargeBoard ? "flex justify-center" : "flex items-center justify-center",
+        // For large boards, align content to the top-left to ensure scrolling works correctly.
+        // For small boards, center them in the available space.
+        isLargeBoard ? "flex justify-start items-start" : "flex items-center justify-center",
         "overflow-auto cursor-grab p-2"
       )}
     >
       <div 
         className="grid relative"
         style={{
-          // The GRID's total size is calculated from the number of cells and the calculated cell size.
-          // This makes a 10x10 board larger than the viewport, enabling scrolling.
+          // The GRID's total size is calculated from the *actual* number of cells and the calculated cell size.
+          // This makes boards larger than the display size overflow the container, enabling scrolling.
           width: `calc(${width} * ${cellSize})`,
           height: `calc(${height} * ${cellSize})`,
           gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
