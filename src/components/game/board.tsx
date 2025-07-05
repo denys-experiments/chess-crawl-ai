@@ -1,6 +1,6 @@
 
 import { useRef } from 'react';
-import type { Board, Position } from '@/types';
+import type { Board, Position, Piece } from '@/types';
 import { Tile } from './tile';
 import { cn } from '@/lib/utils';
 
@@ -60,7 +60,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   const height = board.length;
   const width = board[0].length;
   const cellSizeRem = 5;
-  const isLargeBoard = width > 8 || height > 8;
+  const isLargeBoard = (width * height) > 72;
 
   return (
     <div 
@@ -84,7 +84,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
         {board.map((row, y) =>
           row.map((tile, x) => (
             <Tile
-              key={`${x}-${y}`}
+              key={`${x}-${y}-${tile?.type}-${(tile as Piece)?.id ?? ''}`}
               tile={tile}
               position={{ x, y }}
               onClick={() => handleTileClickWrapper(x, y)}
