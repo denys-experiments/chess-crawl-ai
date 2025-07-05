@@ -77,6 +77,7 @@ export default function Home() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEnemyThinking, setIsEnemyThinking] = useState(false);
+  const [isPlayerMoving, setIsPlayerMoving] = useState(false);
 
   const [activeEnemyFactions, setActiveEnemyFactions] = useState<string[]>(['black']);
   const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
@@ -185,7 +186,7 @@ export default function Home() {
     }
   }, [selectedPiece, board]);
 
-  const movePiece = useCallback((from: Position, to: Position) => {
+  const movePiece = useCallback((from: Position, to: Position, onComplete: () => void) => {
     if (!board) return;
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     const pieceToMove = JSON.parse(JSON.stringify(newBoard[from.y][from.x] as Piece));
@@ -257,22 +258,25 @@ export default function Home() {
     
     setTimeout(() => {
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+        onComplete();
     }, 300);
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (!board || isLevelComplete || isGameOver) return;
+    if (!board || isLevelComplete || isGameOver || isPlayerMoving) return;
 
     const isPlayerTurn = currentTurn === 'player' && !isEnemyThinking;
 
     // Case 1: A piece is selected and the click is on a valid move tile.
     if (selectedPiece && availableMoves.some(move => move.x === x && move.y === y)) {
       if (isPlayerTurn) {
+        setIsPlayerMoving(true);
         const from = selectedPiece;
-        // Clear selection state *before* moving to prevent visual glitches.
+        movePiece(from, { x, y }, () => {
+          setIsPlayerMoving(false);
+        });
         setSelectedPiece(null);
         setAvailableMoves([]);
-        movePiece(from, { x, y });
       }
       return;
     }
@@ -294,7 +298,7 @@ export default function Home() {
     if (isPlayerTurn) {
       setSelectedPiece(null);
     }
-  }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece]);
+  }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece, isPlayerMoving]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
     let reasoning = `${factionColor.charAt(0).toUpperCase() + factionColor.slice(1)} faction's ${movedPiece.piece} moves to column ${movedPiece.x + 1}, row ${movedPiece.y + 1}.`;
