@@ -59,59 +59,39 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   
   const height = board.length;
   const width = board[0].length;
-  const isSmallBoard = width <= 8 && height <= 8;
+  const viewboxSize = 8;
 
-  if (isSmallBoard) {
-    return (
-      <div 
-        className={cn(
-          "w-full h-full bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20",
-          "flex items-center justify-center p-2"
-        )}
-      >
-        <div
-          className="grid relative max-w-full max-h-full"
-          style={{
-            aspectRatio: `${width} / ${height}`,
-            gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
-          }}
-        >
-          {board.map((row, y) =>
-            row.map((tile, x) => (
-              <Tile
-                key={`${x}-${y}-${tile?.type}-${(tile as Piece)?.id ?? ''}`}
-                tile={tile}
-                position={{ x, y }}
-                onClick={() => onTileClick(x, y)}
-                isSelected={selectedPiece?.x === x && selectedPiece?.y === y}
-                isAvailableMove={availableMoves.some(move => move.x === x && move.y === y)}
-              />
-            ))
-          )}
-        </div>
-      </div>
-    );
-  }
+  // Determine the number of cells to fit into the viewport for each axis.
+  // If the board dimension is > viewboxSize, we ensure viewboxSize cells are visible.
+  // Otherwise, we fit the actual board dimension to fill the space.
+  const displayWidth = width > viewboxSize ? viewboxSize : width;
+  const displayHeight = height > viewboxSize ? viewboxSize : height;
+  
+  // Calculate the cell size. It must be a single value to maintain a 1:1 aspect ratio.
+  // We take the smaller of the possible sizes to ensure everything fits as required.
+  // We use "small viewport" (svw/svh) units for better mobile compatibility.
+  // The 90/80 values account for screen padding and the HUD.
+  const cellSize = `min(90svw / ${displayWidth}, 80svh / ${displayHeight})`;
 
-  // Large board
-  const cellSizeRem = 3.5;
   return (
     <div 
       ref={containerRef}
       onMouseDown={handleMouseDown}
       className={cn(
-        "max-w-full max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
-        "overflow-auto flex"
+        // This is the VIEWPORT. It fills available space and provides scrolling.
+        "w-full h-full bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20",
+        "flex items-center justify-center overflow-auto cursor-grab p-2"
       )}
     >
       <div 
-        className="grid relative m-auto"
+        className="grid relative"
         style={{
+          // The GRID's total size is calculated from the number of cells and the calculated cell size.
+          // This makes a 10x10 board larger than the viewport, enabling scrolling.
+          width: `calc(${width} * ${cellSize})`,
+          height: `calc(${height} * ${cellSize})`,
           gridTemplateColumns: `repeat(${width}, 1fr)`,
           gridTemplateRows: `repeat(${height}, 1fr)`,
-          width: `${width * cellSizeRem}rem`,
-          height: `${height * cellSizeRem}rem`,
         }}
       >
         {board.map((row, y) =>
