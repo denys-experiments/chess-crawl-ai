@@ -23,7 +23,7 @@ import {
 
 
 interface GameHudProps {
-  turn: 'player' | 'enemy';
+  currentTurn: string;
   level: number;
   inventory: { pieces: Piece[], cosmetics: string[] };
   aiReasoning: string;
@@ -36,8 +36,15 @@ interface GameHudProps {
 }
 
 export function GameHud(props: GameHudProps) {
-  const { turn, level, inventory, aiReasoning, isEnemyThinking } = props;
+  const { currentTurn, level, inventory, aiReasoning, isEnemyThinking } = props;
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
+
+  const getTurnText = () => {
+    if (currentTurn === 'player') {
+      return "Player's Turn";
+    }
+    return `${currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)} Faction's Turn`;
+  };
 
   return (
     <Card className="w-full md:w-96 md:max-w-sm flex-shrink-0 bg-card/50 backdrop-blur-sm border-primary/30">
@@ -53,8 +60,8 @@ export function GameHud(props: GameHudProps) {
                     <span>Enemy is thinking...</span>
                 </>
             ) : (
-                <span className={`text-xl font-semibold ${turn === 'player' ? 'text-accent' : 'text-destructive'}`}>
-                    {turn === 'player' ? "Player's Turn" : "Enemy's Turn"}
+                <span className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
+                    {getTurnText()}
                 </span>
             )}
         </CardDescription>

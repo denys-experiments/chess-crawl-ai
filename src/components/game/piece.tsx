@@ -32,6 +32,21 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
     }
   };
 
+  const getPieceColorClass = () => {
+    if (piece.color === 'white') {
+        return 'text-foreground';
+    }
+    switch (piece.color) {
+        case 'black': return 'text-red-400';
+        case 'orange': return 'text-orange-400';
+        case 'red': return 'text-red-600';
+        case 'purple': return 'text-purple-500';
+        case 'cyan': return 'text-cyan-400';
+        default: return 'text-gray-500'; // Fallback for unknown factions
+    }
+  };
+
+
   const getCosmeticDisplay = () => {
     if (!piece.cosmetic) return null;
 
@@ -81,10 +96,7 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
         className={cn(
           'drop-shadow-lg transition-transform duration-300',
           size === 'lg' ? 'text-4xl' : 'text-3xl',
-          {
-            'text-foreground': piece.color === 'white',
-            'text-red-400': piece.color === 'black',
-          },
+          getPieceColorClass(),
           piece.piece === 'Pawn' ? getRotationClass() : ''
         )}
         style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}

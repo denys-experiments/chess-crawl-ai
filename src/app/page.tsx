@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Piece, Board, Position, PieceType } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
@@ -69,7 +69,6 @@ export default function Home() {
   const [board, setBoard] = useState<Board | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<Position | null>(null);
   const [availableMoves, setAvailableMoves] = useState<Position[]>([]);
-  const [turn, setTurn] = useState<'player' | 'enemy'>('player');
   const [playerPieces, setPlayerPieces] = useState<Piece[]>([]);
   const [enemyPieces, setEnemyPieces] = useState<Piece[]>([]);
   const [inventory, setInventory] = useState<{ pieces: Piece[], cosmetics: string[] }>({ pieces: [], cosmetics: [] });
@@ -79,16 +78,26 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEnemyThinking, setIsEnemyThinking] = useState(false);
 
+  const [activeEnemyFactions, setActiveEnemyFactions] = useState<string[]>(['black']);
+  const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
+  const [turnIndex, setTurnIndex] = useState(0);
+  const currentTurn = useMemo(() => turnOrder[turnIndex % turnOrder.length], [turnOrder, turnIndex]);
+  
   const { toast } = useToast();
 
-  useEffect(() => {
+  const startNewGame = useCallback(() => {
     setIsLoading(true);
-    // Board initialization is now client-side only to prevent hydration errors
-    const initialBoard = initializeBoard(1);
-    checkForInitialRescues(initialBoard);
-    setBoard(initialBoard);
+    const { board: newBoard, factions } = initializeBoard(1);
+    checkForInitialRescues(newBoard);
+    setBoard(newBoard);
+    setActiveEnemyFactions(factions);
+    setTurnIndex(0);
     setIsLoading(false);
   }, []);
+  
+  useEffect(() => {
+    startNewGame();
+  }, [startNewGame]);
 
   const checkForInitialRescues = (initialBoard: Board) => {
     const playerPiecesOnBoard: Piece[] = [];
@@ -133,7 +142,7 @@ export default function Home() {
   }, [board, level, isLoading]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (!board || turn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
+    if (!board || currentTurn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
 
     const clickedTile = board[y][x];
 
@@ -159,7 +168,7 @@ export default function Home() {
       setSelectedPiece({ x, y });
       setAvailableMoves(getValidMoves({ x, y }, board));
     }
-  }, [turn, isEnemyThinking, selectedPiece, availableMoves, board, isLevelComplete, isGameOver]);
+  }, [currentTurn, isEnemyThinking, selectedPiece, availableMoves, board, isLevelComplete, isGameOver]);
 
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
@@ -231,7 +240,7 @@ export default function Home() {
     setBoard(newBoard);
     setSelectedPiece(null);
     setAvailableMoves([]);
-    setTurn('enemy');
+    setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
   };
 
   const checkForAllyRescue = (pos: Position, currentBoard: Board) => {
@@ -255,23 +264,18 @@ export default function Home() {
     });
   }
   
-  const runEnemyTurn = useCallback(async () => {
+  const runEnemyTurn = useCallback(async (factionColor: string) => {
     if (!board || !playerPieces) return;
     setIsEnemyThinking(true);
     setAiReasoning('');
 
     await new Promise(res => setTimeout(res, 200));
 
-    const enemies: Piece[] = [];
-    board.forEach(row => row.forEach(tile => {
-      if (tile?.type === 'piece' && tile.color === 'black') {
-        enemies.push(tile);
-      }
-    }));
+    const enemies = enemyPieces.filter(p => p.color === factionColor);
 
     if (enemies.length === 0) {
       setIsEnemyThinking(false);
-      setTurn('player');
+      setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
       return;
     }
 
@@ -297,14 +301,21 @@ export default function Home() {
             let score = 0;
             const targetTile = board[move.y][move.x];
 
-            if (targetTile?.type === 'piece' && targetTile.color === 'white') {
+            if (targetTile?.type === 'piece' && targetTile.color !== enemy.color) {
+                let captureValue = 0;
                 switch (targetTile.piece) {
-                    case 'Queen': score += 90; break;
-                    case 'Rook': score += 50; break;
-                    case 'Bishop': score += 30; break;
-                    case 'Knight': score += 30; break;
-                    case 'Pawn': score += 10; break;
-                    case 'King': score += 1000; break;
+                    case 'Queen': captureValue = 90; break;
+                    case 'Rook': captureValue = 50; break;
+                    case 'Bishop': captureValue = 30; break;
+                    case 'Knight': captureValue = 30; break;
+                    case 'Pawn': captureValue = 10; break;
+                    case 'King': captureValue = 1000; break;
+                }
+                
+                if(targetTile.color === 'white'){
+                    score += captureValue * 1.5;
+                } else {
+                    score += captureValue;
                 }
             }
             
@@ -340,9 +351,9 @@ export default function Home() {
     }
     
     if (allPossibleMoves.length === 0) {
-        setAiReasoning('Enemy has no available moves.');
+        setAiReasoning(`The ${factionColor} faction has no available moves.`);
         setIsEnemyThinking(false);
-        setTurn('player');
+        setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
         return;
     }
 
@@ -383,46 +394,53 @@ export default function Home() {
     
     setBoard(newBoard);
 
-    let reasoning = `Enemy ${pieceToMove.piece} moves to column ${move.x + 1}, row ${move.y + 1}.`;
+    let reasoning = `${factionColor.charAt(0).toUpperCase() + factionColor.slice(1)} faction's ${pieceToMove.piece} moves to column ${move.x + 1}, row ${move.y + 1}.`;
     if (targetTile?.type === 'piece') {
-        reasoning += ` Capturing a ${targetTile.piece}.`;
+        reasoning += ` Capturing a ${targetTile.color} ${targetTile.piece}.`;
     }
     setAiReasoning(reasoning);
 
     setIsEnemyThinking(false);
-    setTurn('player');
-  }, [board, playerPieces, getValidMoves]);
+    setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+  }, [board, playerPieces, getValidMoves, enemyPieces, turnOrder.length]);
 
 
   useEffect(() => {
-    if (turn === 'enemy' && !isEnemyThinking && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
-      runEnemyTurn();
+    if (currentTurn !== 'player' && !isEnemyThinking && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
+      if (enemyPieces.some(p => p.color === currentTurn)) {
+        runEnemyTurn(currentTurn);
+      } else {
+        // Faction is defeated, skip turn
+        setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+      }
     }
-  }, [turn, isEnemyThinking, enemyPieces.length, runEnemyTurn, isGameOver, isLevelComplete]);
+  }, [currentTurn, isEnemyThinking, enemyPieces, runEnemyTurn, isGameOver, isLevelComplete, turnOrder.length]);
   
   const startNextLevel = (piecesToCarry: Piece[]) => {
     setIsLoading(true);
     const nextLevel = level + 1;
     setLevel(nextLevel);
     
-    const newBoard = initializeBoard(nextLevel, piecesToCarry);
+    const { board: newBoard, factions } = initializeBoard(nextLevel, piecesToCarry);
     checkForInitialRescues(newBoard);
     
     setBoard(newBoard);
+    setActiveEnemyFactions(factions);
+    setTurnIndex(0);
     setIsLevelComplete(false);
-    setTurn('player');
     setIsLoading(false);
   };
 
   const restartGame = () => {
     setIsLoading(true);
     setLevel(1);
-    const newBoard = initializeBoard(1);
+    const { board: newBoard, factions } = initializeBoard(1);
     checkForInitialRescues(newBoard);
     setBoard(newBoard);
+    setActiveEnemyFactions(factions);
     setSelectedPiece(null);
     setAvailableMoves([]);
-    setTurn('player');
+    setTurnIndex(0);
     setInventory({ pieces: [], cosmetics: [] });
     setAiReasoning('');
     setIsLevelComplete(false);
@@ -444,12 +462,13 @@ export default function Home() {
     if (!board) return;
     setIsLoading(true);
     const king = playerPieces.find(p => p.piece === 'King');
-    const newBoard = initializeBoard(level, king ? [king] : [], { width, height });
+    const { board: newBoard, factions } = initializeBoard(level, king ? [king] : [], { width, height });
     checkForInitialRescues(newBoard);
     setBoard(newBoard);
+    setActiveEnemyFactions(factions);
     setSelectedPiece(null);
     setAvailableMoves([]);
-    setTurn('player');
+    setTurnIndex(0);
     setAiReasoning('');
     setIsLevelComplete(false);
     setIsGameOver(false);
@@ -568,7 +587,7 @@ export default function Home() {
           />
         </div>
         <GameHud 
-          turn={turn}
+          currentTurn={currentTurn}
           level={level}
           inventory={inventory}
           aiReasoning={aiReasoning}

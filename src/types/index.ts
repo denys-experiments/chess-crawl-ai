@@ -1,5 +1,5 @@
 export type PieceType = 'King' | 'Queen' | 'Rook' | 'Bishop' | 'Knight' | 'Pawn';
-export type PieceColor = 'white' | 'black' | 'neutral';
+export type PieceColor = string;
 
 export interface Piece {
   id: string;

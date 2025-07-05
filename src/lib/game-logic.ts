@@ -1,5 +1,6 @@
 
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
+import { getFactionsForLevel } from './factions';
 
 function getRandomAllyPiece(level: number): PieceType {
   const pieceWeights: { piece: PieceType; weight: number; minLevel: number }[] = [
@@ -40,7 +41,7 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
-export function initializeBoard(level: number, carryOverPieces: Piece[] = [], dimensions?: { width: number, height: number }): Board {
+export function initializeBoard(level: number, carryOverPieces: Piece[] = [], dimensions?: { width: number, height: number }): { board: Board, factions: string[] } {
   const width = dimensions?.width || Math.min(14, 7 + Math.floor(level / 2) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
   const height = dimensions?.height || Math.min(14, 7 + Math.floor(level / 3) + (level > 3 ? Math.floor(Math.random() * 3) - 1 : 0));
   
@@ -78,19 +79,30 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
     if(kingY-1 >= 0) board[kingY-1][kingX] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX, y: kingY-1, id: `wp2-${Date.now()}`, direction: 'up' };
   }
 
-  const enemyKingX = Math.floor(width / 2);
-  board[0][enemyKingX] = { type: 'piece', piece: 'King', color: 'black', x: enemyKingX, y: 0, id: `bk-${Date.now()}` };
-  
-  if (enemyKingX - 1 >= 0) board[1][enemyKingX-1] = { type: 'piece', piece: 'Pawn', color: 'black', x: enemyKingX - 1, y: 1, id: `bp1-${Date.now()}`, direction: 'down'};
-  if (level > 1 && enemyKingX + 1 < width) {
-    board[1][enemyKingX+1] = { type: 'piece', piece: 'Pawn', color: 'black', x: enemyKingX + 1, y: 1, id: `bp2-${Date.now()}`, direction: 'down'};
-  }
-  if (level > 2 && enemyKingX - 1 >= 0) {
-    board[0][enemyKingX-1] = { type: 'piece', piece: 'Knight', color: 'black', x: enemyKingX - 1, y: 0, id: `bn1-${Date.now()}`};
-  }
-   if (level > 3 && enemyKingX + 1 < width) {
-    board[0][enemyKingX+1] = { type: 'piece', piece: 'Knight', color: 'black', x: enemyKingX + 1, y: 0, id: `bn2-${Date.now()}`};
-  }
+  const factions = getFactionsForLevel(level);
+  const factionWidth = Math.floor(width / factions.length);
+
+  factions.forEach((factionColor, i) => {
+      const factionStartX = i * factionWidth;
+      const fKingX = factionStartX + Math.floor(factionWidth / 2);
+
+      if (isWithinBoard(fKingX, 0, board) && !board[0][fKingX]) {
+          board[0][fKingX] = { type: 'piece', piece: 'King', color: factionColor, x: fKingX, y: 0, id: `b-king-${factionColor}-${Date.now()}` };
+      }
+
+      if (isWithinBoard(fKingX - 1, 1, board) && !board[1][fKingX - 1]) {
+          board[1][fKingX - 1] = { type: 'piece', piece: 'Pawn', color: factionColor, x: fKingX - 1, y: 1, id: `b-pawn-${factionColor}-1-${Date.now()}`, direction: 'down' };
+      }
+      if (level > 1 && isWithinBoard(fKingX + 1, 1, board) && !board[1][fKingX + 1]) {
+          board[1][fKingX + 1] = { type: 'piece', piece: 'Pawn', color: factionColor, x: fKingX + 1, y: 1, id: `b-pawn-${factionColor}-2-${Date.now()}`, direction: 'down' };
+      }
+      if (level > 2 && isWithinBoard(fKingX - 1, 0, board) && !board[0][fKingX - 1]) {
+          board[0][fKingX - 1] = { type: 'piece', piece: 'Knight', color: factionColor, x: fKingX - 1, y: 0, id: `b-knight-${factionColor}-1-${Date.now()}` };
+      }
+      if (level > 3 && isWithinBoard(fKingX + 1, 0, board) && !board[0][fKingX + 1]) {
+          board[0][fKingX + 1] = { type: 'piece', piece: 'Knight', color: factionColor, x: fKingX + 1, y: 0, id: `b-knight-${factionColor}-2-${Date.now()}` };
+      }
+  });
 
   const emptySquares: Position[] = [];
   for (let y = 0; y < height; y++) {
@@ -126,7 +138,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
       if (pos) board[pos.y][pos.x] = { type: 'sleeping_ally', piece: getRandomAllyPiece(level) };
   }
 
-  return board;
+  return { board, factions };
 }
 
 export function isWithinBoard(x: number, y: number, board: Board): boolean {
