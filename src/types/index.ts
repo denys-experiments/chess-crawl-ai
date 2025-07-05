@@ -1,0 +1,35 @@
+export type PieceType = 'King' | 'Queen' | 'Rook' | 'Bishop' | 'Knight' | 'Pawn';
+export type PieceColor = 'white' | 'black' | 'neutral';
+
+export interface Piece {
+  id: string;
+  type: 'piece';
+  piece: PieceType;
+  color: PieceColor;
+  x: number;
+  y: number;
+  cosmetics?: string[];
+}
+
+export interface Wall {
+  type: 'wall';
+}
+
+export interface Chest {
+  type: 'chest';
+  content: 'cosmetic' | 'promotion';
+}
+
+export interface SleepingAlly {
+  type: 'sleeping_ally';
+  piece: PieceType;
+}
+
+export type Tile = Piece | Wall | Chest | SleepingAlly | null;
+
+export type Board = Tile[][];
+
+export interface Position {
+  x: number;
+  y: number;
+}
