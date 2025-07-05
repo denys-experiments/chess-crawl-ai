@@ -76,7 +76,7 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
   };
 
   return (
-    <div className="relative flex items-center justify-center">
+    <div className="relative flex items-center justify-center pointer-events-none">
       <span
         className={cn(
           'drop-shadow-lg transition-transform duration-300',
