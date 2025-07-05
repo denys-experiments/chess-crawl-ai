@@ -59,14 +59,49 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   
   const height = board.length;
   const width = board[0].length;
-  const cellSizeRem = 3.5;
+  const isSmallBoard = width <= 8 && height <= 8;
 
+  if (isSmallBoard) {
+    return (
+      <div 
+        className={cn(
+          "w-full max-w-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20",
+          "flex items-center justify-center p-2"
+        )}
+      >
+        <div
+          className="grid w-full h-full relative"
+          style={{
+            aspectRatio: `${width} / ${height}`,
+            gridTemplateColumns: `repeat(${width}, 1fr)`,
+            gridTemplateRows: `repeat(${height}, 1fr)`,
+          }}
+        >
+          {board.map((row, y) =>
+            row.map((tile, x) => (
+              <Tile
+                key={`${x}-${y}-${tile?.type}-${(tile as Piece)?.id ?? ''}`}
+                tile={tile}
+                position={{ x, y }}
+                onClick={() => onTileClick(x, y)}
+                isSelected={selectedPiece?.x === x && selectedPiece?.y === y}
+                isAvailableMove={availableMoves.some(move => move.x === x && move.y === y)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Large board
+  const cellSizeRem = 3.5;
   return (
     <div 
       ref={containerRef}
       onMouseDown={handleMouseDown}
       className={cn(
-        "max-w-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
+        "max-w-full max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
         "overflow-auto flex"
       )}
     >
