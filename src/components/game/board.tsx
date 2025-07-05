@@ -1,5 +1,5 @@
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import type { Board, Position, Piece } from '@/types';
 import { Tile } from './tile';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,16 @@ interface GameBoardProps {
 export function GameBoard({ board, onTileClick, selectedPiece, availableMoves, isLoading }: GameBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+
+  useEffect(() => {
+    // On larger boards, the container is scrollable. When a new level loads
+    // (indicated by isLoading=true), we scroll to the bottom to ensure the
+    // player's pieces are in view.
+    if (isLoading && containerRef.current) {
+      const ele = containerRef.current;
+      ele.scrollTop = ele.scrollHeight - ele.clientHeight;
+    }
+  }, [isLoading, board]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const ele = containerRef.current;
