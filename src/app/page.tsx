@@ -15,6 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { GamePiece } from '@/components/game/piece';
 
 export default function Home() {
   const [level, setLevel] = useState(1);
@@ -85,20 +86,20 @@ export default function Home() {
     const newBoard = board.map(row => row.slice());
     const piece = newBoard[from.y][from.x] as Piece;
     
+    let pieceToMove = {...piece};
+
     // Handle special tiles
     const targetTile = newBoard[to.y][to.x];
     if (targetTile) {
       if(targetTile.type === 'chest') {
         const cosmetic = "sunglasses";
+        pieceToMove.cosmetics = [...(pieceToMove.cosmetics || []), cosmetic];
         setInventory(prev => ({...prev, cosmetics: [...prev.cosmetics, cosmetic]}));
-        toast({ title: "Chest Opened!", description: `You found ${cosmetic}!` });
-      }
-      if(targetTile.type === 'sleeping_ally') {
-        toast({ title: "Ally Rescued!", description: `A ${targetTile.piece} has joined your side!` });
+        toast({ title: "Chest Opened!", description: `Your ${piece.piece} found sunglasses!` });
       }
     }
 
-    newBoard[to.y][to.x] = { ...piece, x: to.x, y: to.y };
+    newBoard[to.y][to.x] = { ...pieceToMove, x: to.x, y: to.y };
     newBoard[from.y][from.x] = null;
     
     // Check for rescued allies
@@ -294,7 +295,7 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                 <div className="grid grid-cols-4 gap-4 py-4">
                     {selectablePieces.map(piece => (
                         <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-border'}`}>
-                             <span className="text-4xl">{getPieceUnicode(piece)}</span>
+                             <GamePiece piece={piece} size="sm" />
                              <span className="text-xs text-muted-foreground">{piece.piece}</span>
                         </div>
                     ))}
@@ -307,17 +308,4 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
             </DialogContent>
         </Dialog>
     );
-}
-
-function getPieceUnicode(piece: Piece) {
-  const isWhite = piece.color === 'white';
-  switch (piece.piece) {
-    case 'King': return isWhite ? '♔' : '♚';
-    case 'Queen': return isWhite ? '♕' : '♛';
-    case 'Rook': return isWhite ? '♖' : '♜';
-    case 'Bishop': return isWhite ? '♗' : '♝';
-    case 'Knight': return isWhite ? '♘' : '♞';
-    case 'Pawn': return isWhite ? '♙' : '♟';
-    default: return '';
-  }
 }

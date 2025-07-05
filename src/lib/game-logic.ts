@@ -1,4 +1,20 @@
-import type { Board, Position, Piece, Tile } from '@/types';
+import type { Board, Position, Piece, Tile, PieceType } from '@/types';
+
+function getRandomAllyPiece(level: number): PieceType {
+  let availablePieces: PieceType[];
+  if (level < 3) {
+    // Lower levels get more common pieces
+    availablePieces = ['Pawn', 'Knight', 'Bishop'];
+  } else if (level < 5) {
+    // Mid levels get better pieces
+    availablePieces = ['Knight', 'Bishop', 'Rook'];
+  } else {
+    // High levels get the best pieces
+    availablePieces = ['Bishop', 'Rook', 'Queen'];
+  }
+  return availablePieces[Math.floor(Math.random() * availablePieces.length)];
+}
+
 
 export function initializeBoard(level: number, carryOverPieces: Piece[] = []): Board {
   const board: Board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -49,7 +65,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
 
   // Place chests and allies
   board[0][0] = { type: 'chest', content: 'cosmetic' };
-  board[4][4] = { type: 'sleeping_ally', piece: 'Rook' };
+  board[4][4] = { type: 'sleeping_ally', piece: getRandomAllyPiece(level) };
 
   return board;
 }

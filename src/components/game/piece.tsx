@@ -3,9 +3,10 @@ import { cn } from '@/lib/utils';
 
 interface PieceProps {
   piece: Piece;
+  size?: 'sm' | 'lg';
 }
 
-export function GamePiece({ piece }: PieceProps) {
+export function GamePiece({ piece, size = 'lg' }: PieceProps) {
   const getPieceUnicode = () => {
     const isWhite = piece.color === 'white';
     switch (piece.piece) {
@@ -25,7 +26,8 @@ export function GamePiece({ piece }: PieceProps) {
     <div className="relative flex items-center justify-center">
       <span
         className={cn(
-          'text-6xl md:text-7xl drop-shadow-lg',
+          'drop-shadow-lg',
+          size === 'lg' ? 'text-6xl md:text-7xl' : 'text-4xl',
           {
             'text-foreground': piece.color === 'white',
             'text-red-400': piece.color === 'black',
@@ -36,7 +38,7 @@ export function GamePiece({ piece }: PieceProps) {
         {getPieceUnicode()}
       </span>
       {hasSunglasses && (
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl" style={{ textShadow: 'none' }}>
+        <div className={cn("absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2", size === 'lg' ? 'text-2xl' : 'text-xl')} style={{ textShadow: 'none' }}>
           😎
         </div>
       )}
