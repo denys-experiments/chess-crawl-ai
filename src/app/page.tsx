@@ -254,8 +254,6 @@ export default function Home() {
     checkForAllyRescue(to, newBoard);
 
     setBoard(newBoard);
-    setSelectedPiece(null);
-    setAvailableMoves([]);
     
     setTimeout(() => {
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
@@ -270,17 +268,19 @@ export default function Home() {
     // Case 1: A piece is selected and the click is on a valid move tile.
     if (selectedPiece && availableMoves.some(move => move.x === x && move.y === y)) {
       if (isPlayerTurn) {
-        movePiece(selectedPiece, { x, y });
+        const from = selectedPiece;
+        // Clear selection state *before* moving to prevent visual glitches.
+        setSelectedPiece(null);
+        setAvailableMoves([]);
+        movePiece(from, { x, y });
       }
-      // If not player's turn, do nothing, preserving the selection.
       return;
     }
 
     const clickedTile = board[y][x];
 
-    // Case 2: The click is on a friendly piece.
+    // Case 2: The click is on a friendly piece. Can be done on any turn.
     if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
-      // If clicking the same piece, deselect it. Otherwise, select the new piece.
       if (selectedPiece && selectedPiece.x === x && selectedPiece.y === y) {
         setSelectedPiece(null);
       } else {
@@ -289,9 +289,11 @@ export default function Home() {
       return;
     }
 
-    // Case 3: The click is anywhere else (empty tile, enemy piece not in a valid move, etc.). Deselect.
-    setSelectedPiece(null);
-
+    // Case 3: Click is anywhere else. ONLY deselect if it's the player's turn.
+    // This preserves selection across enemy turns.
+    if (isPlayerTurn) {
+      setSelectedPiece(null);
+    }
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
@@ -337,7 +339,7 @@ export default function Home() {
         const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
         const validEnemyMoves = moves.filter(move => {
             const targetTile = board[move.y][move.x];
-            return targetTile?.type !== 'chest' && targetTile?.type !== 'sleeping_ally';
+            return targetTile?.type !== 'sleeping_ally';
         });
 
         for (const move of validEnemyMoves) {
@@ -360,6 +362,9 @@ export default function Home() {
                 } else {
                     score += captureValue;
                 }
+            } else if (targetTile?.type === 'chest') {
+                 // Enemies avoid chests for now
+                score -= 50;
             }
             
             if (playerKing) {
