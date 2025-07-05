@@ -70,7 +70,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
         )}
       >
         <div
-          className="grid w-full h-full relative"
+          className="grid relative max-w-full max-h-full"
           style={{
             aspectRatio: `${width} / ${height}`,
             gridTemplateColumns: `repeat(${width}, 1fr)`,
