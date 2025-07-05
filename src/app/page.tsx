@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Piece, Board, Position, SpecialTile } from '@/types';
+import type { Piece, Board, Position } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
 import { initializeBoard, getValidMoves } from '@/lib/game-logic';
@@ -16,10 +16,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { GamePiece } from '@/components/game/piece';
+import { Loader2 } from 'lucide-react';
 
 export default function Home() {
   const [level, setLevel] = useState(1);
-  const [board, setBoard] = useState<Board>(() => initializeBoard(1));
+  const [board, setBoard] = useState<Board | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<Position | null>(null);
   const [availableMoves, setAvailableMoves] = useState<Position[]>([]);
   const [turn, setTurn] = useState<'player' | 'enemy'>('player');
@@ -34,6 +35,14 @@ export default function Home() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Initialize board on the client side only to prevent hydration errors
+    setBoard(initializeBoard(1));
+  }, []);
+
+
+  useEffect(() => {
+    if (!board) return;
+
     const newPlayerPieces: Piece[] = [];
     const newEnemyPieces: Piece[] = [];
     board.forEach((row, y) => {
@@ -51,7 +60,7 @@ export default function Home() {
     setEnemyPieces(newEnemyPieces);
 
     if (level > 0) {
-      if (newEnemyPieces.length === 0) {
+      if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0) {
         setIsLevelComplete(true);
       } else if (newPlayerPieces.length > 0 && !newPlayerPieces.some(p => p.piece === 'King')) {
         setIsGameOver(true);
@@ -60,7 +69,7 @@ export default function Home() {
   }, [board, level]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (turn !== 'player' || isLoading || isLevelComplete || isGameOver) return;
+    if (!board || turn !== 'player' || isLoading || isLevelComplete || isGameOver) return;
 
     const clickedTile = board[y][x];
 
@@ -89,6 +98,7 @@ export default function Home() {
   }, [turn, isLoading, selectedPiece, availableMoves, board, isLevelComplete, isGameOver]);
 
   const movePiece = (from: Position, to: Position) => {
+    if (!board) return;
     const newBoard = board.map(row => row.slice());
     const piece = newBoard[from.y][from.x] as Piece;
     
@@ -131,6 +141,7 @@ export default function Home() {
   }
   
   const runEnemyTurn = useCallback(async () => {
+    if (!board) return;
     setIsLoading(true);
     setAiReasoning('');
 
@@ -246,7 +257,7 @@ export default function Home() {
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
       const king = playerPieces.find(p => p.piece === 'King');
-      const allCarriedPieces = king ? [...piecesToCarry, king] : piecesToCarry;
+      const allCarriedPieces = king ? [...piecesToCarry, {...king}] : piecesToCarry;
 
       setInventory(prev => ({...prev, pieces: allCarriedPieces}));
       startNextLevel(allCarriedPieces);
@@ -256,19 +267,25 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
         <div className="flex-grow flex items-center justify-center">
-          <GameBoard
-            board={board}
-            onTileClick={handleTileClick}
-            selectedPiece={selectedPiece}
-            availableMoves={availableMoves}
-          />
+          {board ? (
+            <GameBoard
+              board={board}
+              onTileClick={handleTileClick}
+              selectedPiece={selectedPiece}
+              availableMoves={availableMoves}
+            />
+          ) : (
+             <div className="aspect-square w-full max-w-[calc(100vh-10rem)] flex items-center justify-center bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            </div>
+          )}
         </div>
         <GameHud 
           turn={turn}
           level={level}
           inventory={inventory}
           aiReasoning={aiReasoning}
-          isLoading={isLoading}
+          isLoading={isLoading || !board}
         />
       </div>
       <LevelCompleteDialog 
