@@ -49,8 +49,15 @@ export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: T
     >
       {tileContent()}
       {isAvailableMove && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-1/3 h-1/3 rounded-full bg-accent/70 animate-pulse"></div>
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+          <div
+            className={cn(
+              'animate-pulse rounded-full',
+              tile?.type === 'piece'
+                ? 'h-full w-full border-4 border-destructive/60'
+                : 'h-1/3 w-1/3 bg-accent/60'
+            )}
+          />
         </div>
       )}
     </div>

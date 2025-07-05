@@ -112,9 +112,9 @@ export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading 
     return (
       <div 
         className={cn(
-            "absolute w-[var(--cell-size)] h-[var(--cell-size)] ease-in-out pointer-events-none",
+            "absolute z-10 w-[var(--cell-size)] h-[var(--cell-size)] ease-in-out pointer-events-none",
             !isLoading && "transition-all duration-300",
-            piece.piece === 'Pawn' ? getRotationClass() : ''
+            getRotationClass()
         )}
         style={{
             top: `calc(${piece.y} * var(--cell-size))`,
