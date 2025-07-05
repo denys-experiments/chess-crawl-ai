@@ -1,6 +1,7 @@
 
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
+import { generateRandomName } from './names';
 
 function getRandomAllyPiece(level: number): PieceType {
   const pieceWeights: { piece: PieceType; weight: number; minLevel: number }[] = [
@@ -54,7 +55,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
   if (carriedOverKing) {
     board[kingY][kingX] = { ...carriedOverKing, x: kingX, y: kingY };
   } else {
-    board[kingY][kingX] = { type: 'piece', piece: 'King', color: 'white', x: kingX, y: kingY, id: `wk-${Date.now()}` };
+    board[kingY][kingX] = { type: 'piece', piece: 'King', color: 'white', x: kingX, y: kingY, id: `wk-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
   }
 
   const otherCarryOverPieces = carryOverPieces.filter(p => p.piece !== 'King');
@@ -75,8 +76,8 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
   });
 
   if (placedCount === 0 && level === 1) {
-    if(kingX-1 >= 0 && kingY-1 >= 0) board[kingY-1][kingX-1] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX-1, y: kingY-1, id: `wp1-${Date.now()}`, direction: 'up' };
-    if(kingY-1 >= 0) board[kingY-1][kingX] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX, y: kingY-1, id: `wp2-${Date.now()}`, direction: 'up' };
+    if(kingX-1 >= 0 && kingY-1 >= 0) board[kingY-1][kingX-1] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX-1, y: kingY-1, id: `wp1-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
+    if(kingY-1 >= 0) board[kingY-1][kingX] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX, y: kingY-1, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 };
   }
 
   const factions = getFactionsForLevel(level, dimensions?.numFactions);
@@ -139,7 +140,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
       }
       
       const { x: fkx, y: fky } = finalKingPos;
-      board[fky][fkx] = { type: 'piece', piece: 'King', color: factionColor, x: fkx, y: fky, id: `b-king-${factionColor}-${Date.now()}` };
+      board[fky][fkx] = { type: 'piece', piece: 'King', color: factionColor, x: fkx, y: fky, id: `b-king-${factionColor}-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: level, captures: 0 };
       
       let pawnDirection: Piece['direction'] = 'down';
       let surroundingOffsets: { dx: number, dy: number, piece: PieceType, minLevel: number }[] = [];
@@ -182,6 +183,9 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
                       x: pieceX,
                       y: pieceY,
                       id: `b-${offset.piece.toLowerCase()}-${factionColor}-${index}-${Date.now()}`,
+                      name: generateRandomName(),
+                      discoveredOnLevel: level,
+                      captures: 0,
                       ...(offset.piece === 'Pawn' && { direction: pawnDirection })
                   };
               }
@@ -314,7 +318,6 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
       let isObstacle = false;
 
       if (!isWithinBoard(obsX, obsY, board)) {
-          // Board edge is an obstacle
           isObstacle = true;
       } else {
           const obstacleTile = board[obsY][obsX];
@@ -329,7 +332,6 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
 
           if (isWithinBoard(bounceX, bounceY, board)) {
               const bounceTile = board[bounceY][bounceX];
-              // Can only bounce into an empty square or a chest
               if (!bounceTile || bounceTile.type === 'chest') {
                   uniqueMoves.set(`${bounceX},${bounceY}`, { x: bounceX, y: bounceY });
               }
@@ -355,7 +357,7 @@ function getKnightMoves(pos: Position, piece: Piece, board: Board): Position[] {
             const target = board[newY][newX];
             if (!target) {
                 moves.push({x: newX, y: newY});
-            } else if (target.type !== 'wall' && target.type !== 'sleeping_ally') {
+            } else if (target.type !== 'wall' && (target.type !== 'sleeping_ally' || piece.color === 'white')) {
                 if (target.type === 'piece') {
                     if (target.color !== piece.color) {
                         moves.push({x: newX, y: newY});
@@ -384,7 +386,7 @@ function getKingMoves(pos: Position, piece: Piece, board: Board): Position[] {
             const target = board[newY][newX];
              if (!target) {
                 moves.push({x: newX, y: newY});
-            } else if (target.type !== 'wall' && target.type !== 'sleeping_ally') {
+            } else if (target.type !== 'wall' && (target.type !== 'sleeping_ally' || piece.color === 'white')) {
                 if (target.type === 'piece') {
                     if (target.color !== piece.color) {
                         moves.push({x: newX, y: newY});
@@ -409,7 +411,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
     while (isWithinBoard(currentX, currentY, board)) {
       const target = board[currentY][currentX];
       if (target) {
-        if (target.type === 'wall' || target.type === 'sleeping_ally') {
+        if (target.type === 'wall' || (target.type === 'sleeping_ally' && piece.color !== 'white')) {
             break;
         }
         if (target.type === 'piece') {
@@ -418,7 +420,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
           }
           break;
         }
-        if (target.type === 'chest') {
+        if (target.type === 'chest' || (target.type === 'sleeping_ally' && piece.color === 'white')) {
            moves.push({ x: currentX, y: currentY });
            break;
         }

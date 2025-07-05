@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from '@/components/ui/separator';
 
 
 interface GameHudProps {
@@ -28,6 +29,7 @@ interface GameHudProps {
   inventory: { pieces: Piece[], cosmetics: string[] };
   aiReasoning: string;
   isEnemyThinking: boolean;
+  selectedPiece: Piece | null;
   onRegenerateLevel: (width: number, height: number, numFactions: number) => void;
   onWinLevel: () => void;
   onCreatePiece: (pieceType: PieceType) => void;
@@ -35,8 +37,36 @@ interface GameHudProps {
   onAwardCosmetic: () => void;
 }
 
+function PieceInfoPanel({ piece }: { piece: Piece }) {
+    const cosmeticName = piece.cosmetic
+        ? piece.cosmetic.charAt(0).toUpperCase() + piece.cosmetic.slice(1)
+        : 'None';
+
+    return (
+        <div className="space-y-3 mb-6">
+            <div className="p-4 border rounded-lg bg-background/50">
+                <h4 className="font-headline text-lg text-primary text-center mb-3">{piece.name}</h4>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <div className="font-semibold text-muted-foreground">Species</div>
+                    <div className="text-right">{piece.piece}</div>
+                    
+                    <div className="font-semibold text-muted-foreground">Cosmetic</div>
+                    <div className="text-right">{cosmeticName}</div>
+
+                    <div className="font-semibold text-muted-foreground">Discovered</div>
+                    <div className="text-right">Level {piece.discoveredOnLevel}</div>
+
+                    <div className="font-semibold text-muted-foreground">Captures</div>
+                    <div className="text-right">{piece.captures}</div>
+                </div>
+            </div>
+            <Separator />
+        </div>
+    );
+}
+
 export function GameHud(props: GameHudProps) {
-  const { currentTurn, level, inventory, aiReasoning, isEnemyThinking } = props;
+  const { currentTurn, level, inventory, aiReasoning, isEnemyThinking, selectedPiece } = props;
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
 
   const getTurnText = () => {
@@ -67,6 +97,7 @@ export function GameHud(props: GameHudProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {selectedPiece && <PieceInfoPanel piece={selectedPiece} />}
         <div>
           <h4 className="font-headline text-lg mb-2 text-primary">Inventory</h4>
           <div className="flex items-center gap-4">

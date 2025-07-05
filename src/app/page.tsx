@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { GamePiece } from '@/components/game/piece';
 import { Loader2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
+import { generateRandomName } from '@/lib/names';
 
 function getPromotionPiece(level: number, playerPieces: Piece[]): PieceType {
     const promotionOptions: { piece: PieceType; baseWeight: number }[] = [
@@ -89,8 +90,6 @@ export default function Home() {
 
   const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    const height = currentBoard.length;
-    const width = currentBoard[0]?.length || 0;
     
     directions.forEach(([dx, dy]) => {
       const nx = pos.x + dx;
@@ -99,14 +98,24 @@ export default function Home() {
         const adjacentTile = currentBoard[ny][nx];
         if (adjacentTile?.type === 'sleeping_ally') {
           const newPieceType = adjacentTile.piece;
-          currentBoard[ny][nx] = { type: 'piece', piece: newPieceType, color: 'white', x: nx, y: ny, id: `${nx}-${ny}-${Date.now()}` };
+          currentBoard[ny][nx] = {
+            type: 'piece',
+            piece: newPieceType,
+            color: 'white',
+            x: nx,
+            y: ny,
+            id: `${nx}-${ny}-${Date.now()}`,
+            name: generateRandomName(),
+            discoveredOnLevel: level,
+            captures: 0,
+          };
           toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
           // Recursive call to check for chain reactions
           checkForAllyRescue({ x: nx, y: ny }, currentBoard);
         }
       }
     });
-  }, [toast]);
+  }, [toast, level]);
   
   const checkForInitialRescues = useCallback((initialBoard: Board) => {
     const playerPiecesOnBoard: Piece[] = [];
@@ -182,7 +191,10 @@ export default function Home() {
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
       setAvailableMoves(getValidMoves(selectedPiece, board));
-    } else {
+    } else if (currentTurn !== 'player') {
+      // Do nothing, keep selection
+    }
+    else {
       setAvailableMoves([]);
     }
   }, [selectedPiece, board, currentTurn]);
@@ -199,6 +211,10 @@ export default function Home() {
         y: to.y,
     };
     
+    if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
+        newPieceState.captures = (newPieceState.captures || 0) + 1;
+    }
+
     if (pieceToMove.piece === 'Pawn') {
         const isOrthogonalMove = from.x === to.x || from.y === to.y;
         
@@ -276,12 +292,12 @@ export default function Home() {
         clickLock.current = true;
         
         const from = selectedPiece;
-        setSelectedPiece(null); // Deselect immediately for better feel
         
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
           clickLock.current = false;
         });
+        setSelectedPiece(null); // Deselect immediately for better feel
       }
       return;
     }
@@ -298,8 +314,10 @@ export default function Home() {
       return;
     }
 
-    // Case 3: Click is anywhere else.
-    setSelectedPiece(null);
+    // Case 3: Click is anywhere else (and it's player's turn).
+    if(isPlayerTurn) {
+        setSelectedPiece(null);
+    }
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece, isPlayerMoving]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
@@ -422,6 +440,10 @@ export default function Home() {
     
     let newPieceState: Piece = { ...pieceToMove, x: move.x, y: move.y };
     
+    if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
+        newPieceState.captures = (newPieceState.captures || 0) + 1;
+    }
+
     if (pieceToMove.piece === 'Pawn') {
         const isOrthogonal = from.x === move.x || from.y === move.y;
         const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
@@ -496,6 +518,16 @@ export default function Home() {
       startNextLevel(allCarriedPieces);
   };
 
+  const selectedPieceData = useMemo(() => {
+    if (selectedPiece && board) {
+        const tile = board[selectedPiece.y][selectedPiece.x];
+        if (tile?.type === 'piece' && tile.color === 'white') {
+            return tile;
+        }
+    }
+    return null;
+  }, [selectedPiece, board]);
+
   // --- CHEAT FUNCTIONS ---
 
   const handleRegenerateLevel = (width: number, height: number, numFactions: number) => {
@@ -548,7 +580,10 @@ export default function Home() {
         color: 'white',
         x: spawnPos.x,
         y: spawnPos.y,
-        id: `${pieceType}-${Date.now()}`
+        id: `${pieceType}-${Date.now()}`,
+        name: generateRandomName(),
+        discoveredOnLevel: level,
+        captures: 0,
     };
     setBoard(newBoard);
     toast({ title: "Cheat Activated!", description: `A friendly ${pieceType} has appeared.` });
@@ -632,6 +667,7 @@ export default function Home() {
           inventory={inventory}
           aiReasoning={aiReasoning}
           isEnemyThinking={isEnemyThinking}
+          selectedPiece={selectedPieceData}
           onRegenerateLevel={handleRegenerateLevel}
           onWinLevel={handleWinLevel}
           onCreatePiece={handleCreatePiece}
@@ -692,7 +728,7 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                 </DialogHeader>
                 <div className="grid grid-cols-4 gap-4 py-4">
                     {selectablePieces.map(piece => (
-                        <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-border'}`}>
+                        <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-transparent hover:border-border'}`}>
                              <GamePiece piece={piece} size="sm" />
                              <span className="text-xs text-muted-foreground">{piece.piece}</span>
                         </div>

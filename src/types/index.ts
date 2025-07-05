@@ -1,3 +1,4 @@
+
 export type PieceType = 'King' | 'Queen' | 'Rook' | 'Bishop' | 'Knight' | 'Pawn';
 export type PieceColor = string;
 
@@ -8,6 +9,9 @@ export interface Piece {
   color: PieceColor;
   x: number;
   y: number;
+  name: string;
+  discoveredOnLevel: number;
+  captures: number;
   cosmetic?: string;
   direction?: 'up' | 'down' | 'left' | 'right';
 }
