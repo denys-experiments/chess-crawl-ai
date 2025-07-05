@@ -134,29 +134,31 @@ export default function Home() {
     };
 
     if (newPieceState.piece === 'Pawn') {
-        newPieceState.direction = piece.direction; // Start with the old direction
+        newPieceState.direction = piece.direction; // Default to old direction
 
-        const isOrthogonalMove = (from.x === to.x || from.y === to.y);
-        
-        const isForwardMove =
-            (piece.direction === 'up' && to.y < from.y) ||
-            (piece.direction === 'down' && to.y > from.y) ||
-            (piece.direction === 'left' && to.x < from.x) ||
-            (piece.direction === 'right' && to.x > from.x);
+        const isOrthogonalMove = from.x === to.x || from.y === to.y;
 
-        const canLandOn = !targetTile || targetTile.type === 'chest';
-        const isDirectionChangeMove = isOrthogonalMove && !isForwardMove && canLandOn;
+        // A capture is always diagonal, so it can't be a direction change move.
+        if (isOrthogonalMove) {
+            let isStandardForwardMove = false;
+            if (piece.direction === 'up' && to.y === from.y - 1 && from.x === to.x) isStandardForwardMove = true;
+            if (piece.direction === 'down' && to.y === from.y + 1 && from.x === to.x) isStandardForwardMove = true;
+            if (piece.direction === 'left' && to.x === from.x - 1 && from.y === to.y) isStandardForwardMove = true;
+            if (piece.direction === 'right' && to.x === from.x + 1 && from.y === to.y) isStandardForwardMove = true;
+            
+            const canLandOn = !targetTile || targetTile.type === 'chest';
 
-        // A direction change happens on a non-forward, orthogonal move to an empty square or a chest.
-        if (isDirectionChangeMove) {
-             if (to.x > from.x) {
-                newPieceState.direction = 'right';
-            } else if (to.x < from.x) {
-                newPieceState.direction = 'left';
-            } else if (to.y > from.y) {
-                newPieceState.direction = 'down';
-            } else if (to.y < from.y) {
-                newPieceState.direction = 'up';
+            // Direction change only happens on a non-standard-forward, orthogonal move.
+            if (!isStandardForwardMove && canLandOn) {
+                if (to.x > from.x) {
+                    newPieceState.direction = 'right';
+                } else if (to.x < from.x) {
+                    newPieceState.direction = 'left';
+                } else if (to.y > from.y) {
+                    newPieceState.direction = 'down';
+                } else if (to.y < from.y) {
+                    newPieceState.direction = 'up';
+                }
             }
         }
     }
@@ -291,28 +293,31 @@ export default function Home() {
     };
     
     if (newPieceState.piece === 'Pawn') {
-        newPieceState.direction = piece.direction; // Start with the old direction
+        newPieceState.direction = piece.direction; // Default to old direction
 
-        const isOrthogonalMove = (from.x === move.x || from.y === move.y);
+        const isOrthogonalMove = from.x === move.x || from.y === move.y;
 
-        const isForwardMove =
-            (piece.direction === 'up' && move.y < from.y) ||
-            (piece.direction === 'down' && move.y > from.y) ||
-            (piece.direction === 'left' && move.x < from.x) ||
-            (piece.direction === 'right' && move.x > from.x);
-        
-        const canLandOn = !targetTile || targetTile.type === 'chest';
-        const isDirectionChangeMove = isOrthogonalMove && !isForwardMove && canLandOn;
+        // A capture is always diagonal, so it can't be a direction change move.
+        if (isOrthogonalMove) {
+            let isStandardForwardMove = false;
+            if (piece.direction === 'up' && move.y === from.y - 1 && from.x === move.x) isStandardForwardMove = true;
+            if (piece.direction === 'down' && move.y === from.y + 1 && from.x === move.x) isStandardForwardMove = true;
+            if (piece.direction === 'left' && move.x === from.x - 1 && from.y === move.y) isStandardForwardMove = true;
+            if (piece.direction === 'right' && move.x === from.x + 1 && from.y === move.y) isStandardForwardMove = true;
+            
+            const canLandOn = !targetTile || targetTile.type === 'chest';
 
-        if (isDirectionChangeMove) {
-            if (move.x > from.x) {
-                newPieceState.direction = 'right';
-            } else if (move.x < from.x) {
-                newPieceState.direction = 'left';
-            } else if (move.y > from.y) {
-                newPieceState.direction = 'down';
-            } else if (move.y < from.y) {
-                newPieceState.direction = 'up';
+            // Direction change only happens on a non-standard-forward, orthogonal move.
+            if (!isStandardForwardMove && canLandOn) {
+                if (move.x > from.x) {
+                    newPieceState.direction = 'right';
+                } else if (move.x < from.x) {
+                    newPieceState.direction = 'left';
+                } else if (move.y > from.y) {
+                    newPieceState.direction = 'down';
+                } else if (move.y < from.y) {
+                    newPieceState.direction = 'up';
+                }
             }
         }
     }
