@@ -108,7 +108,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
 }
 
 function isWithinBoard(x: number, y: number): boolean {
-  return x >= 0 && x < 8 && y < 8;
+  return x >= 0 && x < 8 && y >= 0 && y < 8;
 }
 
 export function getValidMoves(pos: Position, board: Board): Position[] {
@@ -146,7 +146,6 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     'right': { x: 1, y: 0 },
   }[direction];
 
-  // Standard forward move
   const forwardPos = { x: x + forward.x, y: y + forward.y };
   if (isWithinBoard(forwardPos.x, forwardPos.y)) {
     const target = board[forwardPos.y][forwardPos.x];
@@ -155,7 +154,6 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     }
   }
 
-  // Diagonal captures
   const captureDiagonals = {
     'up': [{ x: -1, y: -1 }, { x: 1, y: -1 }],
     'down': [{ x: -1, y: 1 }, { x: 1, y: 1 }],
@@ -173,7 +171,6 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     }
   });
 
-  // "Push-off" direction changing move
   const adjacentOffsets = [
     { offset: { x: 0, y: -1 } }, // up
     { offset: { x: 0, y: 1 } },  // down
@@ -189,7 +186,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
       isBlocked = true;
     } else {
       const obstacle = board[obstaclePos.y][obstaclePos.x];
-      if (obstacle && obstacle.type !== 'chest') {
+      if (obstacle && obstacle.type !== 'chest' && obstacle.type !== 'sleeping_ally') {
         isBlocked = true;
       }
     }
