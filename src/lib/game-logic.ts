@@ -2,6 +2,7 @@
 
 
 
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -260,59 +261,29 @@ export function getValidMoves(pos: Position, board: Board): Position[] {
 }
 
 function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
-  const moves: Position[] = [];
+  const uniqueMoves = new Map<string, Position>();
   const { x, y } = pos;
   const direction = piece.direction || (piece.color === 'white' ? 'up' : 'down');
 
-  const vectors = {
-    'up':    { x: 0, y: -1 },
-    'down':  { x: 0, y: 1 },
-    'left':  { x: -1, y: 0 },
+  // Rule 1: Standard forward move
+  const forwardVectors = {
+    'up': { x: 0, y: -1 },
+    'down': { x: 0, y: 1 },
+    'left': { x: -1, y: 0 },
     'right': { x: 1, y: 0 },
   };
-
-  const forwardVector = vectors[direction];
+  const forwardVector = forwardVectors[direction];
   const nx = x + forwardVector.x;
   const ny = y + forwardVector.y;
-  let isForwardBlocked = false;
 
-  // 1. Check forward move
   if (isWithinBoard(nx, ny, board)) {
     const target = board[ny][nx];
-    // A pawn can move forward if the square is empty or contains a chest.
     if (!target || target.type === 'chest') {
-      moves.push({ x: nx, y: ny });
-    } else {
-      // The square is blocked by a wall or another piece.
-      isForwardBlocked = true;
+      uniqueMoves.set(`${nx},${ny}`, { x: nx, y: ny });
     }
-  } else {
-    // Forward move is off the board.
-    isForwardBlocked = true;
   }
-
-  // 2. If forward is blocked, allow movement to other open adjacent squares (bounce).
-  if (isForwardBlocked) {
-    const allDirections: ('up' | 'down' | 'left' | 'right')[] = ['up', 'down', 'left', 'right'];
-
-    allDirections.forEach(sideStepDir => {
-      // A bounce move cannot be in the forward direction.
-      if (sideStepDir === direction) return;
-
-      const sideStepVector = vectors[sideStepDir];
-      const snx = x + sideStepVector.x;
-      const sny = y + sideStepVector.y;
-      
-      if (isWithinBoard(snx, sny, board)) {
-        const sideStepTarget = board[sny][snx];
-        if (!sideStepTarget || sideStepTarget.type === 'chest') {
-          moves.push({ x: snx, y: sny });
-        }
-      }
-    });
-  }
-
-  // 3. Diagonal capture (can happen regardless of being blocked)
+  
+  // Rule 2: Diagonal capture
   const captureDirections = {
     'up':    [{ dx: -1, dy: -1 }, { dx: 1, dy: -1 }],
     'down':  [{ dx: -1, dy: 1 }, { dx: 1, dy: 1 }],
@@ -326,12 +297,42 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     if (isWithinBoard(cnx, cny, board)) {
       const target = board[cny][cnx];
       if (target?.type === 'piece' && target.color !== piece.color) {
-        moves.push({ x: cnx, y: cny });
+        uniqueMoves.set(`${cnx},${cny}`, { x: cnx, y: cny });
       }
     }
   });
 
-  return moves;
+  // Rule 3: Ricochet/Bounce move off any adjacent obstacle
+  const orthogonalOffsets = [
+      { dx: 0, dy: -1 }, // up
+      { dx: 0, dy: 1 },  // down
+      { dx: -1, dy: 0 }, // left
+      { dx: 1, dy: 0 },  // right
+  ];
+
+  orthogonalOffsets.forEach(({ dx, dy }) => {
+      const obsX = x + dx;
+      const obsY = y + dy;
+
+      if (isWithinBoard(obsX, obsY, board)) {
+          const obstacleTile = board[obsY][obsX];
+          if (obstacleTile?.type === 'wall' || obstacleTile?.type === 'piece') {
+              // Found an obstacle, calculate bounce position
+              const bounceX = x - dx;
+              const bounceY = y - dy;
+
+              if (isWithinBoard(bounceX, bounceY, board)) {
+                  const bounceTile = board[bounceY][bounceX];
+                  // Can only bounce into an empty square or a chest
+                  if (!bounceTile || bounceTile.type === 'chest') {
+                      uniqueMoves.set(`${bounceX},${bounceY}`, { x: bounceX, y: bounceY });
+                  }
+              }
+          }
+      }
+  });
+  
+  return Array.from(uniqueMoves.values());
 }
 
 function getKnightMoves(pos: Position, piece: Piece, board: Board): Position[] {
@@ -425,5 +426,6 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
+
 
 
