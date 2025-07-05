@@ -73,8 +73,8 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
           className="grid relative max-w-full max-h-full"
           style={{
             aspectRatio: `${width} / ${height}`,
-            gridTemplateColumns: `repeat(${width}, 1fr)`,
-            gridTemplateRows: `repeat(${height}, 1fr)`,
+            gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
           }}
         >
           {board.map((row, y) =>
@@ -102,7 +102,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
       onMouseDown={handleMouseDown}
       className={cn(
         "max-w-full max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
-        "overflow-auto flex"
+        "overflow-auto"
       )}
     >
       <div 
