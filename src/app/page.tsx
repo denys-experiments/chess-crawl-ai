@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Piece, Board, Position } from '@/types';
+import type { Piece, Board, Position, PieceType } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
 import { initializeBoard, getValidMoves } from '@/lib/game-logic';
@@ -19,6 +19,50 @@ import { Button } from "@/components/ui/button";
 import { GamePiece } from '@/components/game/piece';
 import { Loader2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
+
+function getPromotionPiece(level: number, playerPieces: Piece[]): PieceType {
+    const promotionOptions: { piece: PieceType; baseWeight: number }[] = [
+        { piece: 'Knight', baseWeight: 4 },
+        { piece: 'Bishop', baseWeight: 4 },
+        { piece: 'Rook', baseWeight: 2 },
+        { piece: 'Queen', baseWeight: 1 },
+    ];
+
+    const availablePromotions = promotionOptions.filter(option => {
+        if (level < 3) return ['Knight', 'Bishop'].includes(option.piece);
+        if (level < 5) return ['Knight', 'Bishop', 'Rook'].includes(option.piece);
+        return true;
+    });
+
+    const pieceCounts: { [key in PieceType]?: number } = {};
+    playerPieces.forEach(p => {
+        if (p.piece !== 'King' && p.piece !== 'Pawn') {
+            pieceCounts[p.piece] = (pieceCounts[p.piece] || 0) + 1;
+        }
+    });
+
+    const weightedPromotions: { piece: PieceType; weight: number }[] = availablePromotions.map(option => {
+        const count = pieceCounts[option.piece] || 0;
+        const weight = Math.max(0.1, option.baseWeight / (1 + count * 2));
+        return { piece: option.piece, weight };
+    });
+
+    const totalWeight = weightedPromotions.reduce((sum, p) => sum + p.weight, 0);
+    if (totalWeight === 0) {
+        return 'Knight';
+    }
+    let random = Math.random() * totalWeight;
+
+    for (const promotion of weightedPromotions) {
+        if (random < promotion.weight) {
+            return promotion.piece;
+        }
+        random -= promotion.weight;
+    }
+    
+    return weightedPromotions.length > 0 ? weightedPromotions[weightedPromotions.length - 1].piece : 'Knight';
+}
+
 
 export default function Home() {
   const [level, setLevel] = useState(1);
@@ -120,40 +164,46 @@ export default function Home() {
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
     const newBoard = board.map(row => [...row]);
-    const pieceToMove = newBoard[from.y][from.x] as Piece;
+    const pieceToMove = { ...(newBoard[from.y][from.x] as Piece) };
     const targetTile = newBoard[to.y][to.x];
-    
+
     let newPieceState: Piece = {
         ...pieceToMove,
-        id: pieceToMove.id, 
         x: to.x,
         y: to.y,
     };
-
-    if (newPieceState.piece === 'Pawn') {
+    
+    if (pieceToMove.piece === 'Pawn') {
+        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
+        
         const isOrthogonalMove = from.x === to.x || from.y === to.y;
         
-        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
         const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
+        
         const isStandardForwardMove = 
-            (forwardVector.y && to.y === from.y + forwardVector.y && from.x === to.x) || 
-            (forwardVector.x && to.x === from.x + forwardVector.x && from.y === to.y);
+            (forwardVector.y !== undefined && to.y === from.y + forwardVector.y && from.x === to.x) || 
+            (forwardVector.x !== undefined && to.x === from.x + forwardVector.x && from.y === to.y);
 
-        const canLandOn = !targetTile || targetTile.type === 'chest';
-
-        if (isOrthogonalMove && !isStandardForwardMove && canLandOn) {
-            let newDirection = newPieceState.direction;
-            if (to.x > from.x) newDirection = 'right';
-            else if (to.x < from.x) newDirection = 'left';
-            else if (to.y > from.y) newDirection = 'down';
-            else if (to.y < from.y) newDirection = 'up';
-            newPieceState = {...newPieceState, direction: newDirection};
-        } else {
-             newPieceState = {...newPieceState, direction: pieceToMove.direction};
+        if (isOrthogonalMove && !isStandardForwardMove) {
+             let newDirection = newPieceState.direction;
+             if (to.x > from.x) newDirection = 'right';
+             else if (to.x < from.x) newDirection = 'left';
+             else if (to.y > from.y) newDirection = 'down';
+             else if (to.y < from.y) newDirection = 'up';
+             newPieceState = {...newPieceState, direction: newDirection};
         }
     }
 
     if (targetTile?.type === 'chest') {
+      if (pieceToMove.piece === 'Pawn' && targetTile.content === 'promotion') {
+        const newPieceType = getPromotionPiece(level, playerPieces);
+        newPieceState = {
+          ...newPieceState,
+          piece: newPieceType,
+          direction: undefined, // Promoted piece is not a pawn anymore
+        };
+        toast({ title: "Promotion!", description: `Your Pawn promoted to a ${newPieceType}!` });
+      } else {
         const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
         const cosmeticDisplayNames: { [key: string]: string } = {
             sunglasses: 'sunglasses',
@@ -165,10 +215,13 @@ export default function Home() {
         };
         const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
         
-        newPieceState.cosmetic = newCosmetic;
+        const existingCosmetics = inventory.cosmetics.filter(c => c !== pieceToMove.cosmetic);
+        setInventory(prev => ({...prev, cosmetics: [...existingCosmetics, newCosmetic]}));
         
-        setInventory(prev => ({...prev, cosmetics: [...prev.cosmetics, newCosmetic]}));
+        newPieceState.cosmetic = newCosmetic;
+
         toast({ title: "Chest Opened!", description: `Your ${pieceToMove.piece} found ${cosmeticDisplayNames[newCosmetic]}!` });
+      }
     }
 
     newBoard[to.y][to.x] = newPieceState;
@@ -289,32 +342,29 @@ export default function Home() {
     const newBoard = board.map(row => [...row]);
     
     let newPieceState: Piece = {
-        ...pieceToMove,
-        id: pieceToMove.id,
-        x: move.x,
-        y: move.y,
+      ...pieceToMove,
+      x: move.x,
+      y: move.y,
     };
     
-    if (newPieceState.piece === 'Pawn') {
+    if (pieceToMove.piece === 'Pawn') {
+        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
+        
         const isOrthogonalMove = from.x === move.x || from.y === move.y;
         
-        const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
         const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
+        
         const isStandardForwardMove = 
-            (forwardVector.y && move.y === from.y + forwardVector.y && from.x === move.x) || 
-            (forwardVector.x && move.x === from.x + forwardVector.x && from.y === move.y);
+            (forwardVector.y !== undefined && move.y === from.y + forwardVector.y && from.x === move.x) || 
+            (forwardVector.x !== undefined && move.x === from.x + forwardVector.x && from.y === move.y);
 
-        const canLandOn = !targetTile || targetTile.type === 'chest';
-
-        if (isOrthogonalMove && !isStandardForwardMove && canLandOn) {
-            let newDirection = newPieceState.direction;
+        if (isOrthogonalMove && !isStandardForwardMove) {
+            let newDirection = pieceToMove.direction;
             if (move.x > from.x) newDirection = 'right';
             else if (move.x < from.x) newDirection = 'left';
             else if (move.y > from.y) newDirection = 'down';
             else if (move.y < from.y) newDirection = 'up';
             newPieceState = {...newPieceState, direction: newDirection};
-        } else {
-            newPieceState = {...newPieceState, direction: pieceToMove.direction};
         }
     }
 

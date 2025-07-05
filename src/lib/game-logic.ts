@@ -94,7 +94,11 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
 
   for (let i = 0; i < numChests; i++) {
       const pos = emptySquares.pop();
-      if (pos) board[pos.y][pos.x] = { type: 'chest', content: 'cosmetic' };
+      if (pos) {
+        const promotionChance = Math.min(0.5, 0.15 + level * 0.02);
+        const chestContent: ('cosmetic' | 'promotion') = Math.random() < promotionChance ? 'promotion' : 'cosmetic';
+        board[pos.y][pos.x] = { type: 'chest', content: chestContent };
+      }
   }
 
   for (let i = 0; i < numAllies; i++) {
@@ -110,22 +114,23 @@ function isWithinBoard(x: number, y: number): boolean {
 }
 
 export function getValidMoves(pos: Position, board: Board): Position[] {
-  const piece = board[pos.y][pos.x];
-  if (!piece || piece.type !== 'piece') return [];
+  const pieceTile = board[pos.y][pos.x];
+  if (!pieceTile || pieceTile.type !== 'piece') return [];
+  const piece = pieceTile;
 
   switch (piece.piece) {
     case 'Pawn':
-      return getPawnMoves(pos, piece as Piece, board);
+      return getPawnMoves(pos, piece, board);
     case 'Knight':
-      return getKnightMoves(pos, piece as Piece, board);
+      return getKnightMoves(pos, piece, board);
     case 'Bishop':
-      return getSlidingMoves(pos, piece as Piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+      return getSlidingMoves(pos, piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
     case 'Rook':
-      return getSlidingMoves(pos, piece as Piece, board, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
+      return getSlidingMoves(pos, piece, board, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
     case 'Queen':
-      return getSlidingMoves(pos, piece as Piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]);
+      return getSlidingMoves(pos, piece, board, [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]);
     case 'King':
-      return getKingMoves(pos, piece as Piece, board);
+      return getKingMoves(pos, piece, board);
     default:
       return [];
   }
@@ -143,6 +148,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     'right': { x: 1, y: 0 },
   }[direction];
 
+  // Standard forward move
   const forwardPos = { x: x + forward.x, y: y + forward.y };
   if (isWithinBoard(forwardPos.x, forwardPos.y)) {
     const target = board[forwardPos.y][forwardPos.x];
@@ -151,6 +157,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     }
   }
 
+  // Diagonal captures
   const captureDiagonals = {
     'up': [{ x: -1, y: -1 }, { x: 1, y: -1 }],
     'down': [{ x: -1, y: 1 }, { x: 1, y: 1 }],
@@ -168,11 +175,12 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     }
   });
 
+  // "Push-off" direction changing move
   const adjacentOffsets = [
-    { offset: { x: 0, y: -1 } },
-    { offset: { x: 0, y: 1 } },
-    { offset: { x: -1, y: 0 } },
-    { offset: { x: 1, y: 0 } },
+    { offset: { x: 0, y: -1 } }, // up
+    { offset: { x: 0, y: 1 } },  // down
+    { offset: { x: -1, y: 0 } }, // left
+    { offset: { x: 1, y: 0 } },  // right
   ];
 
   adjacentOffsets.forEach(adj => {
@@ -180,11 +188,11 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     let isBlocked = false;
 
     if (!isWithinBoard(obstaclePos.x, obstaclePos.y)) {
-      isBlocked = true;
+      isBlocked = true; // Board edge is an obstacle
     } else {
       const obstacle = board[obstaclePos.y][obstaclePos.x];
-      if (obstacle) {
-        isBlocked = true;
+      if (obstacle && obstacle.type !== 'chest') {
+        isBlocked = true; // Any tile that isn't a chest is an obstacle
       }
     }
 
