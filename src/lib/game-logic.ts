@@ -192,7 +192,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
       const movePos = { x: x - adj.offset.x, y: y - adj.offset.y };
       if (isWithinBoard(movePos.x, movePos.y)) {
         const targetTile = board[movePos.y][movePos.x];
-        if (!targetTile) {
+        if (!targetTile || targetTile.type === 'chest') {
           if (!moves.some(m => m.x === movePos.x && m.y === movePos.y)) {
             moves.push(movePos);
           }
