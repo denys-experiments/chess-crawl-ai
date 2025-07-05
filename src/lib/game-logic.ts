@@ -80,28 +80,113 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = [], di
   }
 
   const factions = getFactionsForLevel(level);
-  const factionWidth = Math.floor(width / factions.length);
+
+  // Define potential anchor points for faction starting positions
+  const allAnchorPoints = [
+      { x: Math.floor(width / 2), y: 0, side: 'top', id: 'top_center' }, 
+      { x: 0, y: Math.floor(height / 4), side: 'left', id: 'left' },
+      { x: width - 1, y: Math.floor(height / 4), side: 'right', id: 'right' },
+      { x: Math.floor(width / 4), y: 0, side: 'top', id: 'top_left' },
+      { x: width - 1 - Math.floor(width / 4), y: 0, side: 'top', id: 'top_right' },
+  ].filter(p => isWithinBoard(p.x, p.y, board));
+
+  const getPoint = (id: string) => allAnchorPoints.find(p => p.id === id);
+
+  let potentialPlacements: (typeof allAnchorPoints[0] | undefined)[] = [];
+  const numFactions = factions.length;
+
+  switch (numFactions) {
+      case 1:
+          potentialPlacements = [getPoint('top_center')];
+          break;
+      case 2:
+          potentialPlacements = [getPoint('top_left'), getPoint('top_right')];
+          break;
+      case 3:
+          potentialPlacements = [getPoint('top_center'), getPoint('left'), getPoint('right')];
+          break;
+      case 4:
+          potentialPlacements = [getPoint('top_left'), getPoint('top_right'), getPoint('left'), getPoint('right')];
+          break;
+      default:
+          potentialPlacements = allAnchorPoints;
+          break;
+  }
+
+  let placementAnchors = shuffle(potentialPlacements.filter(p => !!p) as typeof allAnchorPoints);
+  if (placementAnchors.length < numFactions) {
+      const usedIds = placementAnchors.map(p => p.id);
+      const availablePoints = allAnchorPoints.filter(p => !usedIds.includes(p.id));
+      placementAnchors = placementAnchors.concat(shuffle(availablePoints));
+  }
+  placementAnchors = placementAnchors.slice(0, numFactions);
 
   factions.forEach((factionColor, i) => {
-      const factionStartX = i * factionWidth;
-      const fKingX = factionStartX + Math.floor(factionWidth / 2);
+      const anchor = placementAnchors[i];
+      if (!anchor) return;
 
-      if (isWithinBoard(fKingX, 0, board) && !board[0][fKingX]) {
-          board[0][fKingX] = { type: 'piece', piece: 'King', color: factionColor, x: fKingX, y: 0, id: `b-king-${factionColor}-${Date.now()}` };
+      const { x: kingX, y: kingY, side } = anchor;
+      
+      let finalKingPos = { x: kingX, y: kingY };
+      if (!isWithinBoard(kingX, kingY, board) || board[kingY][kingX]) {
+          const searchDirs = [[0,0], [0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]];
+          const foundPos = searchDirs.map(([dx,dy]) => ({ x: kingX+dx, y: kingY+dy })).find(p => isWithinBoard(p.x, p.y, board) && !board[p.y][p.x]);
+          if (foundPos) {
+              finalKingPos = foundPos;
+          } else {
+               return; 
+          }
       }
+      
+      const { x: fkx, y: fky } = finalKingPos;
+      board[fky][fkx] = { type: 'piece', piece: 'King', color: factionColor, x: fkx, y: fky, id: `b-king-${factionColor}-${Date.now()}` };
+      
+      let pawnDirection: Piece['direction'] = 'down';
+      let surroundingOffsets: { dx: number, dy: number, piece: PieceType, minLevel: number }[] = [];
 
-      if (isWithinBoard(fKingX - 1, 1, board) && !board[1][fKingX - 1]) {
-          board[1][fKingX - 1] = { type: 'piece', piece: 'Pawn', color: factionColor, x: fKingX - 1, y: 1, id: `b-pawn-${factionColor}-1-${Date.now()}`, direction: 'down' };
+      if (side === 'top') {
+          pawnDirection = 'down';
+          surroundingOffsets = [
+              { dx: 0, dy: 1, piece: 'Pawn', minLevel: 1 },
+              { dx: -1, dy: 1, piece: 'Pawn', minLevel: 2 },
+              { dx: -1, dy: 0, piece: 'Knight', minLevel: 3 },
+              { dx: 1, dy: 0, piece: 'Knight', minLevel: 4 },
+          ];
+      } else if (side === 'left') {
+          pawnDirection = 'right';
+          surroundingOffsets = [
+              { dx: 1, dy: 0, piece: 'Pawn', minLevel: 1 },
+              { dx: 1, dy: -1, piece: 'Pawn', minLevel: 2 },
+              { dx: 0, dy: -1, piece: 'Knight', minLevel: 3 },
+              { dx: 0, dy: 1, piece: 'Knight', minLevel: 4 },
+          ];
+      } else if (side === 'right') {
+          pawnDirection = 'left';
+          surroundingOffsets = [
+              { dx: -1, dy: 0, piece: 'Pawn', minLevel: 1 },
+              { dx: -1, dy: 1, piece: 'Pawn', minLevel: 2 },
+              { dx: 0, dy: -1, piece: 'Knight', minLevel: 3 },
+              { dx: 0, dy: 1, piece: 'Knight', minLevel: 4 },
+          ];
       }
-      if (level > 1 && isWithinBoard(fKingX + 1, 1, board) && !board[1][fKingX + 1]) {
-          board[1][fKingX + 1] = { type: 'piece', piece: 'Pawn', color: factionColor, x: fKingX + 1, y: 1, id: `b-pawn-${factionColor}-2-${Date.now()}`, direction: 'down' };
-      }
-      if (level > 2 && isWithinBoard(fKingX - 1, 0, board) && !board[0][fKingX - 1]) {
-          board[0][fKingX - 1] = { type: 'piece', piece: 'Knight', color: factionColor, x: fKingX - 1, y: 0, id: `b-knight-${factionColor}-1-${Date.now()}` };
-      }
-      if (level > 3 && isWithinBoard(fKingX + 1, 0, board) && !board[0][fKingX + 1]) {
-          board[0][fKingX + 1] = { type: 'piece', piece: 'Knight', color: factionColor, x: fKingX + 1, y: 0, id: `b-knight-${factionColor}-2-${Date.now()}` };
-      }
+      
+      surroundingOffsets.forEach((offset, index) => {
+          if (level >= offset.minLevel) {
+              const pieceX = fkx + offset.dx;
+              const pieceY = fky + offset.dy;
+              if (isWithinBoard(pieceX, pieceY, board) && !board[pieceY][pieceX]) {
+                  board[pieceY][pieceX] = {
+                      type: 'piece',
+                      piece: offset.piece,
+                      color: factionColor,
+                      x: pieceX,
+                      y: pieceY,
+                      id: `b-${offset.piece.toLowerCase()}-${factionColor}-${index}-${Date.now()}`,
+                      ...(offset.piece === 'Pawn' && { direction: pawnDirection })
+                  };
+              }
+          }
+      });
   });
 
   const emptySquares: Position[] = [];
