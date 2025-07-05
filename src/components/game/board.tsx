@@ -59,8 +59,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   
   const height = board.length;
   const width = board[0].length;
-  const cellSizeRem = 2.5;
-  const isLargeBoard = (width * height) > 72;
+  const cellSizeRem = 3.5;
 
   return (
     <div 
@@ -68,17 +67,16 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
       onMouseDown={handleMouseDown}
       className={cn(
         "max-w-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
-        isLargeBoard ? "overflow-auto" : "w-full"
+        "overflow-auto flex"
       )}
-      style={!isLargeBoard ? { aspectRatio: `${width} / ${height}` } : {}}
     >
       <div 
-        className="grid relative"
+        className="grid relative m-auto"
         style={{
-          gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
-          width: isLargeBoard ? `${width * cellSizeRem}rem` : '100%',
-          height: isLargeBoard ? `${height * cellSizeRem}rem` : '100%',
+          gridTemplateColumns: `repeat(${width}, 1fr)`,
+          gridTemplateRows: `repeat(${height}, 1fr)`,
+          width: `${width * cellSizeRem}rem`,
+          height: `${height * cellSizeRem}rem`,
         }}
       >
         {board.map((row, y) =>
