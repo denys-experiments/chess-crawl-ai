@@ -3,6 +3,7 @@
 
 
 
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -302,7 +303,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     }
   });
 
-  // Rule 3: Ricochet/Bounce move off any adjacent obstacle
+  // Rule 3: Ricochet/Bounce move off any adjacent obstacle or board edge
   const orthogonalOffsets = [
       { dx: 0, dy: -1 }, // up
       { dx: 0, dy: 1 },  // down
@@ -313,20 +314,27 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   orthogonalOffsets.forEach(({ dx, dy }) => {
       const obsX = x + dx;
       const obsY = y + dy;
+      let isObstacle = false;
 
-      if (isWithinBoard(obsX, obsY, board)) {
+      if (!isWithinBoard(obsX, obsY, board)) {
+          // Board edge is an obstacle
+          isObstacle = true;
+      } else {
           const obstacleTile = board[obsY][obsX];
           if (obstacleTile?.type === 'wall' || obstacleTile?.type === 'piece') {
-              // Found an obstacle, calculate bounce position
-              const bounceX = x - dx;
-              const bounceY = y - dy;
+              isObstacle = true;
+          }
+      }
 
-              if (isWithinBoard(bounceX, bounceY, board)) {
-                  const bounceTile = board[bounceY][bounceX];
-                  // Can only bounce into an empty square or a chest
-                  if (!bounceTile || bounceTile.type === 'chest') {
-                      uniqueMoves.set(`${bounceX},${bounceY}`, { x: bounceX, y: bounceY });
-                  }
+      if (isObstacle) {
+          const bounceX = x - dx;
+          const bounceY = y - dy;
+
+          if (isWithinBoard(bounceX, bounceY, board)) {
+              const bounceTile = board[bounceY][bounceX];
+              // Can only bounce into an empty square or a chest
+              if (!bounceTile || bounceTile.type === 'chest') {
+                  uniqueMoves.set(`${bounceX},${bounceY}`, { x: bounceX, y: bounceY });
               }
           }
       }
@@ -426,6 +434,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
+
 
 
 
