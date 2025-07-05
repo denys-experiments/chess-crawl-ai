@@ -81,6 +81,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves, i
   const isLargeBoard = width > viewboxSize || height > viewboxSize;
 
   const allPieces = board.flat().filter((tile): tile is Piece => tile?.type === 'piece');
+  allPieces.sort((a, b) => a.id.localeCompare(b.id));
 
   return (
     <div 
