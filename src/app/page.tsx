@@ -58,17 +58,29 @@ export default function Home() {
     const clickedTile = board[y][x];
 
     if (selectedPiece) {
+      // If clicking the same piece, deselect it.
+      if (selectedPiece.x === x && selectedPiece.y === y) {
+        setSelectedPiece(null);
+        setAvailableMoves([]);
+        return;
+      }
+
       const isValidMove = availableMoves.some(move => move.x === x && move.y === y);
       if (isValidMove) {
         movePiece(selectedPiece, { x, y });
+      } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
+        // If another of the player's pieces is clicked, switch selection to that piece.
+        setSelectedPiece({ x, y });
+        setAvailableMoves(getValidMoves({ x, y }, board));
       } else {
+        // If an empty tile or other invalid spot is clicked, deselect.
         setSelectedPiece(null);
         setAvailableMoves([]);
       }
     } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
+      // If no piece is selected and a player piece is clicked, select it.
       setSelectedPiece({ x, y });
-      const moves = getValidMoves({ x, y }, board);
-      setAvailableMoves(moves);
+      setAvailableMoves(getValidMoves({ x, y }, board));
     }
   };
 
@@ -119,48 +131,63 @@ export default function Home() {
   const runEnemyTurn = useCallback(async () => {
     setIsLoading(true);
     setAiReasoning('');
-    let tempBoard = board.map(r => r.slice()); // Work on a copy
-    let tempPlayerPieces = [...playerPieces];
-    
-    const enemiesToMove: Piece[] = [];
-    tempBoard.forEach(row => row.forEach(tile => {
-        if(tile?.type === 'piece' && tile.color === 'black') {
-            enemiesToMove.push(tile);
-        }
+
+    await new Promise(res => setTimeout(res, 500));
+
+    const enemies: Piece[] = [];
+    board.forEach(row => row.forEach(tile => {
+      if (tile?.type === 'piece' && tile.color === 'black') {
+        enemies.push(tile);
+      }
     }));
 
-
-    for (const enemy of enemiesToMove) {
-      const currentEnemyTile = tempBoard[enemy.y][enemy.x];
-      if (!currentEnemyTile || currentEnemyTile.type !== 'piece' || currentEnemyTile.id !== enemy.id) {
-          continue;
-      }
-
-      const availableMoves = getValidMoves({ x: enemy.x, y: enemy.y }, tempBoard);
-      if (availableMoves.length > 0) {
-        const bestMovePos = calculateSimpleEnemyMove(enemy, tempBoard, tempPlayerPieces);
-
-        if (bestMovePos) {
-          const newAiReasoning = `Enemy ${enemy.piece} moves to ${String.fromCharCode(97 + bestMovePos.x)}${8 - bestMovePos.y}.\n`;
-          setAiReasoning(prev => prev + newAiReasoning);
-
-          const pieceToMove = tempBoard[enemy.y][enemy.x];
-          
-          const capturedTile = tempBoard[bestMovePos.y][bestMovePos.x];
-          if(capturedTile?.type === 'piece' && capturedTile.color === 'white') {
-              tempPlayerPieces = tempPlayerPieces.filter(p => p.id !== capturedTile.id);
-          }
-
-          if (pieceToMove) {
-            tempBoard[bestMovePos.y][bestMovePos.x] = { ...pieceToMove, x: bestMovePos.x, y: bestMovePos.y };
-            tempBoard[enemy.y][enemy.x] = null;
-          }
-        }
-      }
-      await new Promise(res => setTimeout(res, 500)); // Pause between moves
+    if (enemies.length === 0) {
+      setIsLoading(false);
+      setTurn('player');
+      return;
     }
 
-    setBoard(tempBoard);
+    // Find all "best moves", one for each enemy piece that can move.
+    const bestMoves = enemies.map(enemy => ({
+      piece: enemy,
+      move: calculateSimpleEnemyMove(enemy, board, playerPieces)
+    })).filter(item => item.move !== null) as { piece: Piece; move: Position }[];
+
+    if (bestMoves.length === 0) {
+      setAiReasoning('Enemy has no available moves.');
+      setIsLoading(false);
+      setTurn('player');
+      return;
+    }
+
+    // From the best moves, prioritize captures.
+    const captureMoves = bestMoves.filter(({ move }) => {
+      const targetTile = board[move.y][move.x];
+      return targetTile?.type === 'piece' && targetTile.color === 'white';
+    });
+    
+    let moveToMake: { piece: Piece; move: Position };
+
+    if (captureMoves.length > 0) {
+      // If there are capture moves, pick one of them randomly.
+      moveToMake = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+    } else {
+      // Otherwise, pick any of the best available moves randomly.
+      moveToMake = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    }
+
+    const { piece, move } = moveToMake;
+    const from = { x: piece.x, y: piece.y };
+
+    const newBoard = board.map(row => row.slice());
+    const pieceToMove = newBoard[from.y][from.x] as Piece;
+
+    newBoard[move.y][move.x] = { ...pieceToMove, x: move.x, y: move.y };
+    newBoard[from.y][from.x] = null;
+    
+    setBoard(newBoard);
+    setAiReasoning(`Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`);
+    
     setIsLoading(false);
     setTurn('player');
   }, [board, playerPieces]);
