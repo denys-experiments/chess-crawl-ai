@@ -210,7 +210,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     if (!isWithinBoard(obstaclePos.x, obstaclePos.y, board)) {
       isBlocked = true;
     } else {
-      const obstacle = board[obstaclePos.y][obstaclePos.y];
+      const obstacle = board[obstaclePos.y][obstaclePos.x];
       if (obstacle && obstacle.type !== 'sleeping_ally') {
         isBlocked = true;
       }
