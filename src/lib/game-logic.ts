@@ -1,4 +1,5 @@
 
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -261,67 +262,47 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   const { x, y } = pos;
   const direction = piece.direction || (piece.color === 'white' ? 'up' : 'down');
 
-  const forward = {
-    'up': { x: 0, y: -1 },
-    'down': { x: 0, y: 1 },
-    'left': { x: -1, y: 0 },
-    'right': { x: 1, y: 0 },
-  }[direction];
+  const vectors = {
+    'up':    { forward: { x: 0, y: -1 }, sideways: [{ x: -1, y: 0 }, { x: 1, y: 0 }] },
+    'down':  { forward: { x: 0, y: 1 },  sideways: [{ x: -1, y: 0 }, { x: 1, y: 0 }] },
+    'left':  { forward: { x: -1, y: 0 }, sideways: [{ x: 0, y: -1 }, { x: 0, y: 1 }] },
+    'right': { forward: { x: 1, y: 0 },  sideways: [{ x: 0, y: -1 }, { x: 0, y: 1 }] },
+  };
 
-  const forwardPos = { x: x + forward.x, y: y + forward.y };
+  const currentVectors = vectors[direction];
+
+  // 1. Forward move
+  const forwardPos = { x: x + currentVectors.forward.x, y: y + currentVectors.forward.y };
   if (isWithinBoard(forwardPos.x, forwardPos.y, board)) {
     const target = board[forwardPos.y][forwardPos.x];
+    // Can move forward if the tile is empty or a chest
     if (!target || target.type === 'chest') {
       moves.push(forwardPos);
     }
   }
 
-  const captureDiagonals = {
-    'up': [{ x: -1, y: -1 }, { x: 1, y: -1 }],
-    'down': [{ x: -1, y: 1 }, { x: 1, y: 1 }],
-    'left': [{ x: -1, y: -1 }, { x: -1, y: 1 }],
-    'right': [{ x: 1, y: -1 }, { x: 1, y: 1 }],
-  }[direction];
-
-  captureDiagonals.forEach(diag => {
-    const capturePos = { x: x + diag.x, y: y + diag.y };
-    if (isWithinBoard(capturePos.x, capturePos.y, board)) {
-      const target = board[capturePos.y][capturePos.x];
-      if (target?.type === 'piece' && target.color !== piece.color) {
-        moves.push(capturePos);
+  // 2. Sideways move (strafe to change direction)
+  currentVectors.sideways.forEach(side => {
+    const sidePos = { x: x + side.x, y: y + side.y };
+    if (isWithinBoard(sidePos.x, sidePos.y, board)) {
+      const target = board[sidePos.y][sidePos.x];
+      // Can move sideways if the tile is empty or a chest
+      if (!target || target.type === 'chest') {
+        moves.push(sidePos);
       }
     }
   });
 
-  const adjacentOffsets = [
-    { offset: { x: 0, y: -1 } }, // up
-    { offset: { x: 0, y: 1 } },  // down
-    { offset: { x: -1, y: 0 } }, // left
-    { offset: { x: 1, y: 0 } },  // right
-  ];
-
-  adjacentOffsets.forEach(adj => {
-    const obstaclePos = { x: x + adj.offset.x, y: y + adj.offset.y };
-    let isBlocked = false;
-
-    if (!isWithinBoard(obstaclePos.x, obstaclePos.y, board)) {
-      isBlocked = true;
-    } else {
-      const obstacle = board[obstaclePos.y][obstaclePos.x];
-      if (obstacle && obstacle.type !== 'sleeping_ally') {
-        isBlocked = true;
-      }
-    }
-
-    if (isBlocked) {
-      const movePos = { x: x - adj.offset.x, y: y - adj.offset.y };
-      if (isWithinBoard(movePos.x, movePos.y, board)) {
-        const targetTile = board[movePos.y][movePos.x];
-        if (!targetTile || targetTile.type === 'chest') {
-          if (!moves.some(m => m.x === movePos.x && m.y === movePos.y)) {
-            moves.push(movePos);
-          }
-        }
+  // 3. Diagonal capture
+  currentVectors.sideways.forEach(side => {
+    const capturePos = { 
+      x: x + currentVectors.forward.x + side.x, 
+      y: y + currentVectors.forward.y + side.y 
+    };
+    if (isWithinBoard(capturePos.x, capturePos.y, board)) {
+      const target = board[capturePos.y][capturePos.x];
+      if (target?.type === 'piece' && target.color !== piece.color) {
+        moves.push(capturePos);
       }
     }
   });
