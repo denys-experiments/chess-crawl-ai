@@ -287,7 +287,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
         <div className="flex-grow flex items-center justify-center">
-          {board && !isLoading ? (
+          {board ? (
             <GameBoard
               board={board}
               onTileClick={handleTileClick}
