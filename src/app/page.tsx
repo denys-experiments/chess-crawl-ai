@@ -171,17 +171,11 @@ export default function Home() {
     setIsLoading(false);
   }, [appendToDebugLog, addToHistory]);
   
-  const initialLoadSetup = useCallback(() => {
+  useEffect(() => {
+    // This effect runs once on initial mount to set up the game.
+    // The previous sessionStorage logic was causing issues with hot-reloading in dev.
     setupLevel(1, []);
   }, [setupLevel]);
-
-  useEffect(() => {
-    const hasLoaded = sessionStorage.getItem('chess-crawl-loaded');
-    if (!hasLoaded) {
-      initialLoadSetup();
-      sessionStorage.setItem('chess-crawl-loaded', 'true');
-    }
-  }, [initialLoadSetup]);
 
   useEffect(() => {
     if (!board) return;
@@ -561,7 +555,6 @@ export default function Home() {
     setInventory({ pieces: [], cosmetics: [] });
     setHistory([]);
     setIsGameOver(false);
-    sessionStorage.removeItem('chess-crawl-loaded');
     setupLevel(1, []);
   };
   
