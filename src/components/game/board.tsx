@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import type { Board, Position, Piece } from '@/types';
 import { Tile } from './tile';
 import { cn } from '@/lib/utils';
+import { GamePiece } from './piece';
 
 interface GameBoardProps {
   board: Board;
@@ -64,9 +65,11 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   const displayWidth = Math.min(width, viewboxSize);
   const displayHeight = Math.min(height, viewboxSize);
   
-  const cellSize = `min(90svw / ${displayWidth}, 80svh / ${displayHeight})`;
+  const cellSize = `min(calc(90svw / ${displayWidth}), calc(80svh / ${displayHeight}))`;
   
   const isLargeBoard = width > viewboxSize || height > viewboxSize;
+
+  const allPieces = board.flat().filter((tile): tile is Piece => tile?.type === 'piece');
 
   return (
     <div 
@@ -86,16 +89,17 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
       <div 
         className="grid relative"
         style={{
-          width: `calc(${width} * ${cellSize})`,
-          height: `calc(${height} * ${cellSize})`,
-          gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
-        }}
+          width: `calc(${width} * var(--cell-size))`,
+          height: `calc(${height} * var(--cell-size))`,
+          gridTemplateColumns: `repeat(${width}, 1fr)`,
+          gridTemplateRows: `repeat(${height}, 1fr)`,
+          '--cell-size': cellSize,
+        } as React.CSSProperties}
       >
         {board.map((row, y) =>
           row.map((tile, x) => (
             <Tile
-              key={`${x}-${y}-${tile?.type}-${(tile as Piece)?.id ?? ''}`}
+              key={`${x}-${y}`}
               tile={tile}
               position={{ x, y }}
               onClick={() => handleTileClickWrapper(x, y)}
@@ -104,6 +108,9 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
             />
           ))
         )}
+        {allPieces.map(piece => (
+            <GamePiece key={piece.id} piece={piece} isBoardPiece={true} />
+        ))}
       </div>
     </div>
   );

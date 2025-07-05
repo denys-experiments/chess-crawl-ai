@@ -1,6 +1,5 @@
 
 import type { Tile as TileType, Position } from '@/types';
-import { GamePiece } from './piece';
 import { cn } from '@/lib/utils';
 import { Box, User, ShieldQuestion } from 'lucide-react';
 
@@ -20,7 +19,7 @@ export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: T
     if (!tile) return null;
     switch (tile.type) {
       case 'piece':
-        return <GamePiece key={tile.id} piece={tile} />;
+        return null; // Pieces are rendered separately on the board for animation
       case 'wall':
         return (
           <div className="w-full h-full bg-slate-700 border-2 border-slate-800 flex items-center justify-center">

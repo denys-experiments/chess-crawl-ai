@@ -5,9 +5,10 @@ import { cn } from '@/lib/utils';
 interface PieceProps {
   piece: Piece;
   size?: 'sm' | 'lg';
+  isBoardPiece?: boolean;
 }
 
-export function GamePiece({ piece, size = 'lg' }: PieceProps) {
+export function GamePiece({ piece, size = 'lg', isBoardPiece = false }: PieceProps) {
   const getPieceUnicode = () => {
     const isWhite = piece.color === 'white';
     switch (piece.piece) {
@@ -89,9 +90,9 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
         </div>
     );
   };
-
-  return (
-    <div className="relative flex items-center justify-center pointer-events-none">
+  
+  const pieceVisuals = (
+    <div className="relative flex items-center justify-center pointer-events-none w-full h-full">
       <span
         className={cn(
           'drop-shadow-lg transition-transform duration-300',
@@ -106,4 +107,20 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
       {getCosmeticDisplay()}
     </div>
   );
+
+  if (isBoardPiece) {
+    return (
+      <div 
+        className="absolute w-[var(--cell-size)] h-[var(--cell-size)] transition-all duration-300 ease-in-out"
+        style={{
+            top: `calc(${piece.y} * var(--cell-size))`,
+            left: `calc(${piece.x} * var(--cell-size))`,
+        }}
+      >
+        {pieceVisuals}
+      </div>
+    );
+  }
+
+  return pieceVisuals;
 }
