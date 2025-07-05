@@ -38,7 +38,8 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
     <div className="relative flex items-center justify-center">
       <span
         className={cn(
-          'drop-shadow-lg transition-transform duration-300',
+          'drop-shadow-lg',
+          piece.piece === 'Pawn' && 'transition-transform duration-300',
           size === 'lg' ? 'text-6xl md:text-7xl' : 'text-4xl',
           {
             'text-foreground': piece.color === 'white',
