@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -37,6 +38,7 @@ export default function Home() {
   const { toast } = useToast();
 
   useEffect(() => {
+    setIsLoading(true);
     setBoard(initializeBoard(1));
     setIsLoading(false);
   }, []);
@@ -96,16 +98,18 @@ export default function Home() {
       setSelectedPiece({ x, y });
       setAvailableMoves(getValidMoves({ x, y }, board));
     }
-  }, [turn, isEnemyThinking, selectedPiece, availableMoves, board, isLevelComplete, isGameOver, getValidMoves]);
+  }, [turn, isEnemyThinking, selectedPiece, availableMoves, board, isLevelComplete, isGameOver]);
 
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
     const newBoard = board.map(row => row.slice());
     const piece = newBoard[from.y][from.x] as Piece;
+    const targetTile = newBoard[to.y][to.x];
     
     let pieceToMove = {...piece};
 
-    if (pieceToMove.piece === 'Pawn') {
+    // Only change pawn direction when moving to an empty square
+    if (pieceToMove.piece === 'Pawn' && !targetTile) {
       if (to.x > from.x) {
         pieceToMove.direction = 'right';
       } else if (to.x < from.x) {
@@ -117,7 +121,6 @@ export default function Home() {
       }
     }
 
-    const targetTile = newBoard[to.y][to.x];
     if (targetTile) {
       if(targetTile.type === 'chest') {
         const cosmetic = "sunglasses";
@@ -158,7 +161,8 @@ export default function Home() {
     setIsEnemyThinking(true);
     setAiReasoning('');
 
-    await new Promise(res => setTimeout(res, 500));
+    // Short delay to allow UI to update
+    await new Promise(res => setTimeout(res, 200));
 
     const enemies: Piece[] = [];
     board.forEach(row => row.forEach(tile => {
@@ -232,11 +236,12 @@ export default function Home() {
 
     const { piece, move } = bestMove;
     const from = { x: piece.x, y: piece.y };
+    const targetTile = board[move.y][move.x];
 
     const newBoard = board.map(row => row.slice());
-    let pieceToMove = newBoard[from.y][from.x] as Piece;
+    let pieceToMove = { ...(newBoard[from.y][from.x] as Piece) };
     
-    if (pieceToMove.piece === 'Pawn') {
+    if (pieceToMove.piece === 'Pawn' && !targetTile) {
       if (move.x > from.x) {
         pieceToMove.direction = 'right';
       } else if (move.x < from.x) {
@@ -251,11 +256,13 @@ export default function Home() {
     newBoard[move.y][move.x] = { ...pieceToMove, x: move.x, y: move.y };
     newBoard[from.y][from.x] = null;
     
-    setBoard(newBoard);
-    setAiReasoning(`Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`);
-    
-    setIsEnemyThinking(false);
-    setTurn('player');
+    // Defer state updates to prevent visual flicker
+    requestAnimationFrame(() => {
+        setBoard(newBoard);
+        setAiReasoning(`Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`);
+        setIsEnemyThinking(false);
+        setTurn('player');
+    });
   }, [board, getValidMoves]);
 
 
@@ -281,8 +288,10 @@ export default function Home() {
         });
     });
 
+    // Use a timeout to ensure the board is set after the current render cycle
     setTimeout(() => {
         const finalBoard = [...newBoard];
+        // Check for immediate rescues after board setup
         playerPiecesOnNewBoard.forEach(piece => {
             checkForAllyRescue({x: piece.x, y: piece.y}, finalBoard);
         });
