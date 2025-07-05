@@ -4,6 +4,7 @@
 
 
 
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -321,7 +322,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
           isObstacle = true;
       } else {
           const obstacleTile = board[obsY][obsX];
-          if (obstacleTile?.type === 'wall' || obstacleTile?.type === 'piece') {
+          if (obstacleTile?.type === 'wall' || obstacleTile?.type === 'piece' || obstacleTile?.type === 'sleeping_ally') {
               isObstacle = true;
           }
       }
@@ -434,6 +435,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
+
 
 
 
