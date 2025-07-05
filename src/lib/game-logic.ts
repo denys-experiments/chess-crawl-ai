@@ -291,8 +291,6 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
       const target = board[cny][cnx];
       if (target?.type === 'piece' && target.color !== piece.color) {
         uniqueMoves.set(`${cnx},${cny}`, { x: cnx, y: cny });
-      } else if (target?.type === 'sleeping_ally' && piece.color !== 'white') {
-        uniqueMoves.set(`${cnx},${cny}`, { x: cnx, y: cny });
       }
     }
   });
@@ -350,7 +348,7 @@ function getKnightMoves(pos: Position, piece: Piece, board: Board): Position[] {
             const target = board[newY][newX];
             if (!target) {
                 moves.push({x: newX, y: newY});
-            } else if (target.type !== 'wall' && (target.type !== 'sleeping_ally' || piece.color === 'white')) {
+            } else if (target.type !== 'wall' && target.type !== 'sleeping_ally') {
                 if (target.type === 'piece') {
                     if (target.color !== piece.color) {
                         moves.push({x: newX, y: newY});
@@ -379,7 +377,7 @@ function getKingMoves(pos: Position, piece: Piece, board: Board): Position[] {
             const target = board[newY][newX];
              if (!target) {
                 moves.push({x: newX, y: newY});
-            } else if (target.type !== 'wall' && (target.type !== 'sleeping_ally' || piece.color === 'white')) {
+            } else if (target.type !== 'wall' && target.type !== 'sleeping_ally') {
                 if (target.type === 'piece') {
                     if (target.color !== piece.color) {
                         moves.push({x: newX, y: newY});
@@ -404,7 +402,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
     while (isWithinBoard(currentX, currentY, board)) {
       const target = board[currentY][currentX];
       if (target) {
-        if (target.type === 'wall' || (target.type === 'sleeping_ally' && piece.color !== 'white')) {
+        if (target.type === 'wall' || target.type === 'sleeping_ally') {
             break;
         }
         if (target.type === 'piece') {
@@ -413,7 +411,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
           }
           break;
         }
-        if (target.type === 'chest' || (target.type === 'sleeping_ally' && piece.color === 'white')) {
+        if (target.type === 'chest') {
            moves.push({ x: currentX, y: currentY });
            break;
         }

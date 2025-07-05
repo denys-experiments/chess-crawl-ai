@@ -180,12 +180,16 @@ export default function Home() {
 
 }, [appendToDebugLog, checkForInitialRescues]);
   
+  const initialLoadSetup = useCallback(() => {
+    setupLevel(1, []);
+  }, [setupLevel]);
+
   useEffect(() => {
     if (initialLoad.current) {
       initialLoad.current = false;
-      setupLevel(1, []);
+      initialLoadSetup();
     }
-  }, [setupLevel]);
+  }, [initialLoadSetup]);
   
   useEffect(() => {
     if (isLoading) {
@@ -330,12 +334,12 @@ export default function Home() {
         clickLock.current = true;
         
         const from = { ...selectedPiece };
-        setSelectedPiece(null);
-
+        
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
           clickLock.current = false;
         });
+        setSelectedPiece(null);
       }
       return;
     }
@@ -397,12 +401,8 @@ export default function Home() {
 
     for (const enemy of enemies) {
         const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
-        const validEnemyMoves = moves.filter(move => {
-            const targetTile = board[move.y][move.x];
-            return targetTile?.type !== 'sleeping_ally';
-        });
 
-        for (const move of validEnemyMoves) {
+        for (const move of moves) {
             let score = 0;
             const targetTile = board[move.y][move.x];
 
@@ -550,12 +550,7 @@ export default function Home() {
           });
       }
 
-      let log = `--- CARRY OVER TO LEVEL ${level + 1} ---\n`;
-      log += `Selected pieces in dialog: ${piecesToCarry.length}\n`;
-      log += JSON.stringify(piecesToCarry.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
-      log += `\nFinal pieces for next level (including King): ${finalPiecesForNextLevel.length}\n`;
-      log += JSON.stringify(finalPiecesForNextLevel.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
-      appendToDebugLog(log);
+      appendToDebugLog(`--- CARRY OVER TO LEVEL ${level + 1} ---`);
       
       setInventory(prev => ({...prev, pieces: finalPiecesForNextLevel}));
       setupLevel(level + 1, finalPiecesForNextLevel);
