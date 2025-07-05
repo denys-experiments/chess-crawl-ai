@@ -73,7 +73,7 @@ export default function Home() {
   const [playerPieces, setPlayerPieces] = useState<Piece[]>([]);
   const [enemyPieces, setEnemyPieces] = useState<Piece[]>([]);
   const [inventory, setInventory] = useState<{ pieces: Piece[], cosmetics: string[] }>({ pieces: [], cosmetics: [] });
-  const [aiReasoning, setAiReasoning] = useState<string>('');
+  const [history, setHistory] = useState<string[]>([]);
   const [isLevelComplete, setIsLevelComplete] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,6 +94,10 @@ export default function Home() {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
   }, []);
 
+  const addToHistory = useCallback((message: string) => {
+    setHistory(prev => [message, ...prev]);
+  }, []);
+
   const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board, levelForRescue: number) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
     
@@ -104,6 +108,7 @@ export default function Home() {
         const adjacentTile = currentBoard[ny][nx];
         if (adjacentTile?.type === 'sleeping_ally') {
           const newPieceType = adjacentTile.piece;
+          const newPieceName = generateRandomName();
           currentBoard[ny][nx] = {
             type: 'piece',
             piece: newPieceType,
@@ -111,17 +116,18 @@ export default function Home() {
             x: nx,
             y: ny,
             id: `${nx}-${ny}-${Date.now()}`,
-            name: generateRandomName(),
+            name: newPieceName,
             discoveredOnLevel: levelForRescue,
             captures: 0,
           };
           toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
+          addToHistory(`A friendly ${newPieceType} (${newPieceName}) has woken up and joined your party!`);
           // Recursive call to check for chain reactions
           checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
         }
       }
     });
-  }, [toast]);
+  }, [toast, addToHistory]);
   
   const checkForInitialRescues = useCallback((initialBoard: Board, levelForRescue: number) => {
     const playerPiecesOnBoard: Piece[] = [];
@@ -160,6 +166,7 @@ export default function Home() {
     setBoard(newBoard);
     setActiveEnemyFactions(factions);
     setTurnIndex(0);
+    setHistory([]);
     setIsLevelComplete(false);
 
     let log = '';
@@ -245,7 +252,7 @@ export default function Home() {
     if (!board) return;
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     const pieceToMove = JSON.parse(JSON.stringify(newBoard[from.y][from.x] as Piece));
-    const targetTile = newBoard[to.y][to.x];
+    const targetTile = newBoard[to.y][to.x] ? JSON.parse(JSON.stringify(newBoard[to.y][to.x])) : null;
 
     let newPieceState: Piece = {
         ...pieceToMove,
@@ -253,8 +260,45 @@ export default function Home() {
         y: to.y,
     };
     
+    let eventMessage = '';
+    
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
         newPieceState.captures = (newPieceState.captures || 0) + 1;
+        eventMessage = `Player's ${pieceToMove.name} (${pieceToMove.piece}) captures a ${targetTile.color} ${targetTile.piece} at (${to.x + 1}, ${to.y + 1}).`;
+    } else if (targetTile?.type === 'chest') {
+      const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
+      if (pieceToMove.piece === 'Pawn') {
+        const newPieceType = getPromotionPiece(level, currentPlayerPieces);
+        newPieceState = {
+          ...newPieceState,
+          id: `${newPieceType.toLowerCase()}-${Date.now()}`,
+          piece: newPieceType,
+          direction: undefined,
+        };
+        toast({ title: "Promotion!", description: `Your Pawn promoted to a ${newPieceType}!` });
+        eventMessage = `${pieceToMove.name} (${pieceToMove.piece}) opened a chest and promoted to a ${newPieceType}!`;
+      } else {
+        const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
+        const cosmeticDisplayNames: { [key: string]: string } = {
+            sunglasses: 'sunglasses',
+            tophat: 'a top hat',
+            partyhat: 'a party hat',
+            bowtie: 'a bowtie',
+            heart: 'a heart',
+            star: 'a star',
+        };
+        const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
+        
+        const existingCosmetics = inventory.cosmetics.filter(c => c !== pieceToMove.cosmetic);
+        setInventory(prev => ({...prev, cosmetics: [...existingCosmetics, newCosmetic]}));
+        
+        newPieceState.cosmetic = newCosmetic;
+
+        toast({ title: "Chest Opened!", description: `Your ${pieceToMove.piece} found ${cosmeticDisplayNames[newCosmetic]}!` });
+        eventMessage = `${pieceToMove.name} (${pieceToMove.piece}) opened a chest and found ${cosmeticDisplayNames[newCosmetic]}.`;
+      }
+    } else {
+        eventMessage = `Player's ${pieceToMove.name} (${pieceToMove.piece}) moves to (${to.x + 1}, ${to.y + 1}).`;
     }
 
     if (pieceToMove.piece === 'Pawn') {
@@ -277,38 +321,9 @@ export default function Home() {
         }
     }
 
-    if (targetTile?.type === 'chest') {
-      const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
-      if (pieceToMove.piece === 'Pawn') {
-        const newPieceType = getPromotionPiece(level, currentPlayerPieces);
-        newPieceState = {
-          ...newPieceState,
-          id: `${newPieceType.toLowerCase()}-${Date.now()}`,
-          piece: newPieceType,
-          direction: undefined,
-        };
-        toast({ title: "Promotion!", description: `Your Pawn promoted to a ${newPieceType}!` });
-      } else {
-        const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
-        const cosmeticDisplayNames: { [key: string]: string } = {
-            sunglasses: 'sunglasses',
-            tophat: 'a top hat',
-            partyhat: 'a party hat',
-            bowtie: 'a bowtie',
-            heart: 'a heart',
-            star: 'a star',
-        };
-        const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
-        
-        const existingCosmetics = inventory.cosmetics.filter(c => c !== pieceToMove.cosmetic);
-        setInventory(prev => ({...prev, cosmetics: [...existingCosmetics, newCosmetic]}));
-        
-        newPieceState.cosmetic = newCosmetic;
-
-        toast({ title: "Chest Opened!", description: `Your ${pieceToMove.piece} found ${cosmeticDisplayNames[newCosmetic]}!` });
-      }
+    if (eventMessage) {
+        addToHistory(eventMessage);
     }
-
     newBoard[to.y][to.x] = newPieceState;
     newBoard[from.y][from.x] = null;
     
@@ -321,7 +336,7 @@ export default function Home() {
         onComplete();
         setSelectedPiece(null);
     }, 300);
-  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
+  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder, addToHistory]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
@@ -361,20 +376,19 @@ export default function Home() {
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece, isPlayerMoving]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
-    let reasoning = `${factionColor.charAt(0).toUpperCase() + factionColor.slice(1)} faction's ${movedPiece.piece} moves to column ${movedPiece.x + 1}, row ${movedPiece.y + 1}.`;
+    let reasoning = `${factionColor.charAt(0).toUpperCase() + factionColor.slice(1)} faction's ${movedPiece.name} (${movedPiece.piece}) moves to (${movedPiece.x + 1}, ${movedPiece.y + 1}).`;
     if (targetTile?.type === 'piece') {
         reasoning += ` Capturing a ${targetTile.color} ${targetTile.piece}.`;
     }
     
-    setAiReasoning(reasoning);
+    addToHistory(reasoning);
     setIsEnemyThinking(false);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  }, [turnOrder]);
+  }, [turnOrder, addToHistory]);
 
   const runEnemyTurn = useCallback((factionColor: string) => {
     if (!board) return;
     setIsEnemyThinking(true);
-    setAiReasoning('');
 
     const currentPieces: Piece[] = [];
     board.forEach(row => row.forEach(tile => {
@@ -459,7 +473,7 @@ export default function Home() {
     }
     
     if (allPossibleMoves.length === 0) {
-        setAiReasoning(`The ${factionColor} faction has no available moves.`);
+        addToHistory(`The ${factionColor} faction has no available moves.`);
         setIsEnemyThinking(false);
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
         return;
@@ -507,7 +521,7 @@ export default function Home() {
     setTimeout(() => {
         finishEnemyTurn(factionColor, newPieceState, targetTile);
     }, 300);
-  }, [board, turnOrder, finishEnemyTurn]);
+  }, [board, turnOrder, finishEnemyTurn, addToHistory]);
 
 
   useEffect(() => {
@@ -522,7 +536,7 @@ export default function Home() {
     setSelectedPiece(null);
     setAvailableMoves([]);
     setInventory({ pieces: [], cosmetics: [] });
-    setAiReasoning('');
+    setHistory([]);
     setIsGameOver(false);
     setupLevel(1, []);
   };
@@ -579,7 +593,7 @@ export default function Home() {
     setSelectedPiece(null);
     setAvailableMoves([]);
     setTurnIndex(0);
-    setAiReasoning('');
+    setHistory([]);
     setIsLevelComplete(false);
     setIsGameOver(false);
     toast({ title: "Cheat Activated!", description: `Level regenerated to ${width}x${height} with ${factions.length} faction(s).` });
@@ -703,7 +717,7 @@ export default function Home() {
           currentTurn={currentTurn}
           level={level}
           inventory={inventory}
-          aiReasoning={aiReasoning}
+          history={history}
           isEnemyThinking={isEnemyThinking}
           selectedPiece={selectedPieceData}
           onRegenerateLevel={handleRegenerateLevel}
@@ -800,5 +814,3 @@ function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () 
     </Dialog>
   );
 }
-
-    

@@ -28,7 +28,7 @@ interface GameHudProps {
   currentTurn: string;
   level: number;
   inventory: { pieces: Piece[], cosmetics: string[] };
-  aiReasoning: string;
+  history: string[];
   isEnemyThinking: boolean;
   selectedPiece: Piece | null;
   onRegenerateLevel: (width: number, height: number, numFactions: number) => void;
@@ -68,7 +68,7 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
 }
 
 export function GameHud(props: GameHudProps) {
-  const { currentTurn, level, inventory, aiReasoning, isEnemyThinking, selectedPiece } = props;
+  const { currentTurn, level, inventory, history, isEnemyThinking, selectedPiece } = props;
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
 
   const getTurnText = () => {
@@ -114,9 +114,9 @@ export function GameHud(props: GameHudProps) {
           </div>
         </div>
         <div>
-            <h4 className="font-headline text-lg mb-2 text-primary">AI Thoughts</h4>
+            <h4 className="font-headline text-lg mb-2 text-primary">History</h4>
             <ScrollArea className="h-48 w-full rounded-md border bg-background/50 p-4">
-                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{aiReasoning || 'Waiting for enemy move...'}</pre>
+                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{history.join('\n') || 'Level history will appear here...'}</pre>
             </ScrollArea>
         </div>
         
