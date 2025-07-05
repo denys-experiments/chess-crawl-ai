@@ -134,27 +134,28 @@ export default function Home() {
     };
 
     if (newPieceState.piece === 'Pawn') {
-        newPieceState.direction = piece.direction;
+        newPieceState.direction = piece.direction; // Start with the old direction
 
-        const isMoveToEmptySquare = !targetTile;
-        if (isMoveToEmptySquare) {
-            const currentDirection = piece.direction || (piece.color === 'white' ? 'up' : 'down');
-            const isStandardForwardMove =
-                (currentDirection === 'up' && to.x === from.x && to.y === from.y - 1) ||
-                (currentDirection === 'down' && to.x === from.x && to.y === from.y + 1) ||
-                (currentDirection === 'left' && to.y === from.y && to.x === from.x - 1) ||
-                (currentDirection === 'right' && to.y === from.y && to.x === from.x + 1);
-            
-            if (!isStandardForwardMove) {
-                 if (to.x > from.x) {
-                    newPieceState.direction = 'right';
-                } else if (to.x < from.x) {
-                    newPieceState.direction = 'left';
-                } else if (to.y > from.y) {
-                    newPieceState.direction = 'down';
-                } else if (to.y < from.y) {
-                    newPieceState.direction = 'up';
-                }
+        const isOrthogonalMove = (from.x === to.x || from.y === to.y);
+        
+        const isForwardMove =
+            (piece.direction === 'up' && to.y < from.y) ||
+            (piece.direction === 'down' && to.y > from.y) ||
+            (piece.direction === 'left' && to.x < from.x) ||
+            (piece.direction === 'right' && to.x > from.x);
+
+        const isEmptySquareMove = !targetTile;
+
+        // A direction change happens on a non-forward, orthogonal move to an empty square.
+        if (isOrthogonalMove && !isForwardMove && isEmptySquareMove) {
+             if (to.x > from.x) {
+                newPieceState.direction = 'right';
+            } else if (to.x < from.x) {
+                newPieceState.direction = 'left';
+            } else if (to.y > from.y) {
+                newPieceState.direction = 'down';
+            } else if (to.y < from.y) {
+                newPieceState.direction = 'up';
             }
         }
     }
@@ -289,18 +290,20 @@ export default function Home() {
     };
     
     if (newPieceState.piece === 'Pawn') {
-        newPieceState.direction = piece.direction;
+        newPieceState.direction = piece.direction; // Start with the old direction
 
-        const isMoveToEmptySquare = !targetTile;
-        if (isMoveToEmptySquare) {
-            const currentDirection = piece.direction || (piece.color === 'white' ? 'up' : 'down');
-            const isStandardForwardMove = 
-            (currentDirection === 'up' && move.x === from.x && move.y === from.y - 1) ||
-            (currentDirection === 'down' && move.x === from.x && move.y === from.y + 1) ||
-            (currentDirection === 'left' && move.y === from.y && move.x === from.x - 1) ||
-            (currentDirection === 'right' && move.y === from.y && move.x === from.x + 1);
+        const isOrthogonalMove = (from.x === move.x || from.y === move.y);
 
-            if (!isStandardForwardMove) {
+        const isForwardMove =
+            (piece.direction === 'up' && move.y < from.y) ||
+            (piece.direction === 'down' && move.y > from.y) ||
+            (piece.direction === 'left' && move.x < from.x) ||
+            (piece.direction === 'right' && move.x > from.x);
+
+        const isEmptySquareMove = !targetTile;
+
+        // A direction change happens on a non-forward, orthogonal move to an empty square.
+        if (isOrthogonalMove && !isForwardMove && isEmptySquareMove) {
             if (move.x > from.x) {
                 newPieceState.direction = 'right';
             } else if (move.x < from.x) {
@@ -309,7 +312,6 @@ export default function Home() {
                 newPieceState.direction = 'down';
             } else if (move.y < from.y) {
                 newPieceState.direction = 'up';
-            }
             }
         }
     }
