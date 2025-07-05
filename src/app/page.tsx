@@ -193,7 +193,7 @@ export default function Home() {
         }
     }
 
-    if (targetTile?.type === 'chest') {
+    if (targetTile?.type === 'chest' || (targetTile?.type === 'chest' && isOrthogonalMove)) {
       if (pieceToMove.piece === 'Pawn') {
         const newPieceType = getPromotionPiece(level, playerPieces);
         newPieceState = {
@@ -242,8 +242,11 @@ export default function Home() {
       if (nx >= 0 && nx < 8 && ny >= 0 && ny < 8) {
         const adjacentTile = currentBoard[ny][nx];
         if (adjacentTile?.type === 'sleeping_ally') {
-          currentBoard[ny][nx] = { type: 'piece', piece: adjacentTile.piece, color: 'white', x: nx, y: ny, id: `${nx}-${ny}-${Date.now()}` };
-          toast({ title: "Ally Rescued!", description: `A friendly ${adjacentTile.piece} woke up!` });
+          const newPieceType = adjacentTile.piece;
+          currentBoard[ny][nx] = { type: 'piece', piece: newPieceType, color: 'white', x: nx, y: ny, id: `${nx}-${ny}-${Date.now()}` };
+          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
+          // Recursive call to check for chain reactions
+          checkForAllyRescue({ x: nx, y: ny }, currentBoard);
         }
       }
     });
