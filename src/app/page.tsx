@@ -85,6 +85,27 @@ export default function Home() {
   
   const { toast } = useToast();
 
+  const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board) => {
+    const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    const height = currentBoard.length;
+    const width = currentBoard[0]?.length || 0;
+    
+    directions.forEach(([dx, dy]) => {
+      const nx = pos.x + dx;
+      const ny = pos.y + dy;
+      if (isWithinBoard(nx, ny, currentBoard)) {
+        const adjacentTile = currentBoard[ny][nx];
+        if (adjacentTile?.type === 'sleeping_ally') {
+          const newPieceType = adjacentTile.piece;
+          currentBoard[ny][nx] = { type: 'piece', piece: newPieceType, color: 'white', x: nx, y: ny, id: `${nx}-${ny}-${Date.now()}` };
+          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
+          // Recursive call to check for chain reactions
+          checkForAllyRescue({ x: nx, y: ny }, currentBoard);
+        }
+      }
+    });
+  }, [toast]);
+  
   const checkForInitialRescues = useCallback((initialBoard: Board) => {
     const playerPiecesOnBoard: Piece[] = [];
     initialBoard.forEach((row) => {
@@ -97,7 +118,7 @@ export default function Home() {
     playerPiecesOnBoard.forEach(piece => {
         checkForAllyRescue({x: piece.x, y: piece.y}, initialBoard);
     });
-  }, []);
+  }, [checkForAllyRescue]);
   
   const startNewGame = useCallback(() => {
     setIsLoading(true);
@@ -122,27 +143,6 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board]);
-
-  const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board) => {
-    const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    const height = currentBoard.length;
-    const width = currentBoard[0]?.length || 0;
-    
-    directions.forEach(([dx, dy]) => {
-      const nx = pos.x + dx;
-      const ny = pos.y + dy;
-      if (isWithinBoard(nx, ny, currentBoard)) {
-        const adjacentTile = currentBoard[ny][nx];
-        if (adjacentTile?.type === 'sleeping_ally') {
-          const newPieceType = adjacentTile.piece;
-          currentBoard[ny][nx] = { type: 'piece', piece: newPieceType, color: 'white', x: nx, y: ny, id: `${nx}-${ny}-${Date.now()}` };
-          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
-          // Recursive call to check for chain reactions
-          checkForAllyRescue({ x: nx, y: ny }, currentBoard);
-        }
-      }
-    });
-  }, [toast]);
 
   useEffect(() => {
     if (!board) return;
@@ -285,8 +285,6 @@ export default function Home() {
     setIsEnemyThinking(true);
     setAiReasoning('');
 
-    await new Promise(res => setTimeout(res, 200));
-
     // Derive pieces from the current board to avoid stale state
     const currentPieces: Piece[] = [];
     board.forEach(row => row.forEach(tile => {
@@ -383,9 +381,9 @@ export default function Home() {
 
     const { piece: pieceToMove, move } = bestMove;
     const from = { x: pieceToMove.x, y: pieceToMove.y };
-    const targetTile = board[move.y][move.x];
-
+    
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
+    const targetTile = newBoard[move.y][move.x];
     
     let newPieceState: Piece = { ...pieceToMove, x: move.x, y: move.y };
     
@@ -417,10 +415,10 @@ export default function Home() {
     if (targetTile?.type === 'piece') {
         reasoning += ` Capturing a ${targetTile.color} ${targetTile.piece}.`;
     }
-    setAiReasoning(reasoning);
-
+    
     await new Promise(res => setTimeout(res, 300)); // allow animation to play
 
+    setAiReasoning(reasoning);
     setIsEnemyThinking(false);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
   }, [board, turnOrder]);
