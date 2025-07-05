@@ -36,7 +36,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   if (carriedOverKing) {
     board[7][4] = { ...carriedOverKing, x: 4, y: 7 };
   } else {
-    board[7][4] = { type: 'piece', piece: 'King', color: 'white', x: 4, y: 7, id: 'wk' };
+    board[7][4] = { type: 'piece', piece: 'King', color: 'white', x: 4, y: 7, id: `wk-${Date.now()}` };
   }
 
   // Place other initial carry-over pieces
@@ -56,22 +56,22 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
 
   // Place pawns if no other pieces were carried over
   if (placedCount === 0 && level === 1) {
-    board[6][3] = { type: 'piece', piece: 'Pawn', color: 'white', x: 3, y: 6, id: 'wp1' };
-    board[6][4] = { type: 'piece', piece: 'Pawn', color: 'white', x: 4, y: 6, id: 'wp2' };
+    board[6][3] = { type: 'piece', piece: 'Pawn', color: 'white', x: 3, y: 6, id: `wp1-${Date.now()}` };
+    board[6][4] = { type: 'piece', piece: 'Pawn', color: 'white', x: 4, y: 6, id: `wp2-${Date.now()}` };
   }
 
 
   // Place enemies
-  board[0][4] = { type: 'piece', piece: 'King', color: 'black', x: 4, y: 0, id: 'bk' };
-  board[1][3] = { type: 'piece', piece: 'Pawn', color: 'black', x: 3, y: 1, id: 'bp1'};
+  board[0][4] = { type: 'piece', piece: 'King', color: 'black', x: 4, y: 0, id: `bk-${Date.now()}` };
+  board[1][3] = { type: 'piece', piece: 'Pawn', color: 'black', x: 3, y: 1, id: `bp1-${Date.now()}`};
   if (level > 1) {
-    board[1][5] = { type: 'piece', piece: 'Pawn', color: 'black', x: 5, y: 1, id: 'bp2'};
+    board[1][5] = { type: 'piece', piece: 'Pawn', color: 'black', x: 5, y: 1, id: `bp2-${Date.now()}`};
   }
   if (level > 2) {
-    board[0][3] = { type: 'piece', piece: 'Knight', color: 'black', x: 3, y: 0, id: 'bn1'};
+    board[0][3] = { type: 'piece', piece: 'Knight', color: 'black', x: 3, y: 0, id: `bn1-${Date.now()}`};
   }
    if (level > 3) {
-    board[0][5] = { type: 'piece', piece: 'Knight', color: 'black', x: 5, y: 0, id: 'bn2'};
+    board[0][5] = { type: 'piece', piece: 'Knight', color: 'black', x: 5, y: 0, id: `bn2-${Date.now()}`};
   }
 
   // After placing fixed pieces, find all empty squares
@@ -86,9 +86,10 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
 
   shuffle(emptySquares);
 
-  const numWalls = Math.min(4, 2 + Math.floor(level / 2));
-  const numChests = Math.min(2, 1 + Math.floor(level / 3));
-  const numAllies = Math.min(3, 1 + Math.floor(level / 2));
+  const numWalls = Math.min(emptySquares.length, Math.max(0, 4 + Math.floor(Math.random() * 3 - 1))); // 3 to 5
+  const numChests = Math.min(emptySquares.length - numWalls, Math.max(0, 1 + Math.floor(level / 3) + Math.floor(Math.random()*2))); // 1-2+
+  const numAllies = Math.min(emptySquares.length - numWalls - numChests, Math.max(0, 1 + Math.floor(level / 2)));
+
 
   for (let i = 0; i < numWalls; i++) {
       const pos = emptySquares.pop();
@@ -145,10 +146,18 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
 
   const captureOffsets = [-1, 1];
   captureOffsets.forEach(offset => {
-    if (isWithinBoard(x + offset, y + direction)) {
-      const target = board[y + direction][x + offset];
-      if (target && target.type !== 'wall' && (target.type !== 'piece' || target.color !== piece.color)) {
-        moves.push({ x: x + offset, y: y + direction });
+    const newX = x + offset;
+    const newY = y + direction;
+    if (isWithinBoard(newX, newY)) {
+      const target = board[newY][newX];
+      if (target && target.type !== 'wall' && target.type !== 'sleeping_ally') {
+        if (target.type === 'piece') {
+          if (target.color !== piece.color) {
+            moves.push({ x: newX, y: newY });
+          }
+        } else { // 'chest'
+          moves.push({ x: newX, y: newY });
+        }
       }
     }
   });
@@ -169,8 +178,16 @@ function getKnightMoves(pos: Position, piece: Piece, board: Board): Position[] {
         const newY = y + dy;
         if(isWithinBoard(newX, newY)) {
             const target = board[newY][newX];
-            if (!target || target.type !== 'wall' && (target.type !== 'piece' || target.color !== piece.color)) {
+            if (!target) {
                 moves.push({x: newX, y: newY});
+            } else if (target.type !== 'wall' && target.type !== 'sleeping_ally') {
+                if (target.type === 'piece') {
+                    if (target.color !== piece.color) {
+                        moves.push({x: newX, y: newY});
+                    }
+                } else { // 'chest'
+                    moves.push({x: newX, y: newY});
+                }
             }
         }
     });
@@ -190,8 +207,16 @@ function getKingMoves(pos: Position, piece: Piece, board: Board): Position[] {
         const newY = y + dy;
         if(isWithinBoard(newX, newY)) {
             const target = board[newY][newX];
-             if (!target || target.type !== 'wall' && (target.type !== 'piece' || target.color !== piece.color)) {
+             if (!target) {
                 moves.push({x: newX, y: newY});
+            } else if (target.type !== 'wall' && target.type !== 'sleeping_ally') {
+                if (target.type === 'piece') {
+                    if (target.color !== piece.color) {
+                        moves.push({x: newX, y: newY});
+                    }
+                } else { // 'chest'
+                    moves.push({x: newX, y: newY});
+                }
             }
         }
     });
@@ -210,12 +235,18 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
     while (isWithinBoard(currentX, currentY)) {
       const target = board[currentY][currentX];
       if (target) {
-        if (target.type === 'wall') break;
+        if (target.type === 'wall' || target.type === 'sleeping_ally') {
+            break;
+        }
         if (target.type === 'piece') {
           if (target.color !== piece.color) {
             moves.push({ x: currentX, y: currentY });
           }
           break;
+        }
+        if (target.type === 'chest') {
+           moves.push({ x: currentX, y: currentY });
+           break;
         }
       }
       moves.push({ x: currentX, y: currentY });
