@@ -275,6 +275,7 @@ export default function Home() {
     setBoard(newBoard);
     
     setTimeout(() => {
+        setSelectedPiece(null); // Deselect after animation
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
         onComplete();
     }, 300);
@@ -291,9 +292,10 @@ export default function Home() {
         setIsPlayerMoving(true);
         clickLock.current = true;
         
-        const from = selectedPiece;
+        const from = { ...selectedPiece };
         
-        setSelectedPiece(null); // Deselect immediately for better feel
+        // Optimistically deselect for better UI feel
+        setSelectedPiece(null);
         
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
@@ -513,7 +515,21 @@ export default function Home() {
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
       const king = playerPieces.find(p => p.piece === 'King');
-      const allCarriedPieces = king ? [...piecesToCarry, {...king, cosmetic: king.cosmetic, id: `wk-${Date.now()}`}] : piecesToCarry;
+      
+      // Create fresh copies for the selected pieces, giving them new unique IDs.
+      const clonedCarriedPieces = piecesToCarry.map(p => ({
+          ...p,
+          id: `${p.piece.toLowerCase()}-${Date.now()}-${Math.random()}`
+      }));
+      
+      // Create a fresh copy for the king, giving it a new unique ID.
+      const clonedKing = king ? [{
+          ...king, 
+          id: `wk-${Date.now()}`
+      }] : [];
+
+      // Combine them into the final list for the next level.
+      const allCarriedPieces = [...clonedCarriedPieces, ...clonedKing];
 
       setInventory(prev => ({...prev, pieces: allCarriedPieces}));
       startNextLevel(allCarriedPieces);
