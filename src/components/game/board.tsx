@@ -60,6 +60,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   const height = board.length;
   const width = board[0].length;
   const viewboxSize = 8;
+  const isLargeBoard = width > viewboxSize || height > viewboxSize;
 
   // Determine the number of cells to fit into the viewport for each axis.
   // If the board dimension is > viewboxSize, we ensure viewboxSize cells are visible.
@@ -80,7 +81,9 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
       className={cn(
         // This is the VIEWPORT. It fills available space and provides scrolling.
         "w-full h-full bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20",
-        "flex items-center justify-center overflow-auto cursor-grab p-2"
+        // For large boards, we remove vertical centering to prevent scroll issues. For small boards, we center fully.
+        isLargeBoard ? "flex justify-center" : "flex items-center justify-center",
+        "overflow-auto cursor-grab p-2"
       )}
     >
       <div 
@@ -90,8 +93,8 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
           // This makes a 10x10 board larger than the viewport, enabling scrolling.
           width: `calc(${width} * ${cellSize})`,
           height: `calc(${height} * ${cellSize})`,
-          gridTemplateColumns: `repeat(${width}, 1fr)`,
-          gridTemplateRows: `repeat(${height}, 1fr)`,
+          gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
         }}
       >
         {board.map((row, y) =>
