@@ -41,8 +41,8 @@ function shuffle<T>(array: T[]): T[] {
 }
 
 export function initializeBoard(level: number, carryOverPieces: Piece[] = []): Board {
-  const width = Math.min(14, 8 + Math.floor(level / 3) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
-  const height = Math.min(14, 8 + Math.floor(level / 4) + (level > 4 ? Math.floor(Math.random() * 3) - 1 : 0));
+  const width = Math.min(14, 7 + Math.floor(level / 2) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
+  const height = Math.min(14, 7 + Math.floor(level / 3) + (level > 3 ? Math.floor(Math.random() * 3) - 1 : 0));
   
   const board: Board = Array(height).fill(null).map(() => Array(width).fill(null));
 
