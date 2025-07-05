@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Piece, Board, Position, SpecialTile } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
-import { initializeBoard, getValidMoves, calculateSimpleEnemyMove } from '@/lib/game-logic';
+import { initializeBoard, getValidMoves } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -152,8 +152,10 @@ export default function Home() {
             allPossibleMoves.push({ piece: enemy, move });
         });
     });
+    
+    const validEnemyMoves = allPossibleMoves.filter(({ move }) => board[move.y][move.x]?.type !== 'chest');
 
-    if (allPossibleMoves.length === 0) {
+    if (validEnemyMoves.length === 0) {
         setAiReasoning('Enemy has no available moves.');
         setIsLoading(false);
         setTurn('player');
@@ -161,11 +163,11 @@ export default function Home() {
     }
 
     let bestMove: { piece: Piece, move: Position } | null = null;
-    let highestValue = -1;
+    let highestValue = 0; // Start with 0 to only consider captures as "better"
 
-    for (const { piece, move } of allPossibleMoves) {
+    for (const { piece, move } of validEnemyMoves) {
         const targetTile = board[move.y][move.x];
-        let moveValue = 0; // Default value for a non-capture move
+        let moveValue = 0;
 
         if (targetTile?.type === 'piece' && targetTile.color === 'white') {
             switch (targetTile.piece) {
@@ -184,9 +186,15 @@ export default function Home() {
         }
     }
 
-    // If no capture is available, select a random move
+    // If no capture is available (bestMove is null), select a random move
     if (!bestMove) {
-        bestMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
+        bestMove = validEnemyMoves[Math.floor(Math.random() * validEnemyMoves.length)];
+    }
+
+    if (!bestMove) { // Should not happen if validEnemyMoves is not empty, but as a safeguard.
+        setIsLoading(false);
+        setTurn('player');
+        return;
     }
 
     const { piece, move } = bestMove;
