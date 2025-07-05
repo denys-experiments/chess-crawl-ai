@@ -196,7 +196,8 @@ export default function Home() {
 
     if (targetTile?.type === 'chest') {
       if (pieceToMove.piece === 'Pawn') {
-        const newPieceType = getPromotionPiece(level, playerPieces);
+        const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
+        const newPieceType = getPromotionPiece(level, currentPlayerPieces);
         newPieceState = {
           ...newPieceState,
           piece: newPieceType,
@@ -233,7 +234,7 @@ export default function Home() {
     setSelectedPiece(null);
     setAvailableMoves([]);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  }, [board, checkForAllyRescue, inventory, level, playerPieces, toast, turnOrder]);
+  }, [board, checkForAllyRescue, inventory, level, toast, turnOrder]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || currentTurn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
@@ -265,13 +266,21 @@ export default function Home() {
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece]);
   
   const runEnemyTurn = useCallback(async (factionColor: string) => {
-    if (!board || !playerPieces) return;
+    if (!board) return;
     setIsEnemyThinking(true);
     setAiReasoning('');
 
     await new Promise(res => setTimeout(res, 200));
 
-    const enemies = enemyPieces.filter(p => p.color === factionColor);
+    // Derive pieces from the current board to avoid stale state
+    const currentPieces: Piece[] = [];
+    board.forEach(row => row.forEach(tile => {
+        if (tile?.type === 'piece') {
+            currentPieces.push(tile);
+        }
+    }));
+    const enemies = currentPieces.filter(p => p.color === factionColor);
+    const playerPieces = currentPieces.filter(p => p.color === 'white');
 
     if (enemies.length === 0) {
       setIsEnemyThinking(false);
@@ -291,10 +300,7 @@ export default function Home() {
         const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
         const validEnemyMoves = moves.filter(move => {
             const targetTile = board[move.y][move.x];
-            if (targetTile?.type === 'chest') {
-                return false;
-            }
-            return targetTile?.type !== 'sleeping_ally';
+            return targetTile?.type !== 'chest' && targetTile?.type !== 'sleeping_ally';
         });
 
         for (const move of validEnemyMoves) {
@@ -366,9 +372,7 @@ export default function Home() {
 
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     
-    let newPieceState: Piece = JSON.parse(JSON.stringify(newBoard[from.y][from.x] as Piece));
-    newPieceState.x = move.x;
-    newPieceState.y = move.y;
+    let newPieceState: Piece = { ...pieceToMove, x: move.x, y: move.y };
     
     if (pieceToMove.piece === 'Pawn') {
         const isOrthogonal = from.x === move.x || from.y === move.y;
@@ -402,19 +406,14 @@ export default function Home() {
 
     setIsEnemyThinking(false);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  }, [board, playerPieces, enemyPieces, turnOrder.length]);
+  }, [board, turnOrder]);
 
 
   useEffect(() => {
-    if (currentTurn !== 'player' && !isEnemyThinking && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
-      if (enemyPieces.some(p => p.color === currentTurn)) {
-        runEnemyTurn(currentTurn);
-      } else {
-        // Faction is defeated, skip turn
-        setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-      }
+    if (currentTurn !== 'player' && !isEnemyThinking && !isGameOver && !isLevelComplete) {
+      runEnemyTurn(currentTurn);
     }
-  }, [currentTurn, isEnemyThinking, enemyPieces, runEnemyTurn, isGameOver, isLevelComplete, turnOrder.length]);
+  }, [currentTurn, isEnemyThinking, runEnemyTurn, isGameOver, isLevelComplete]);
   
   const startNextLevel = (piecesToCarry: Piece[]) => {
     setIsLoading(true);
