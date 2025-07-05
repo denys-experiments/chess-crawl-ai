@@ -30,13 +30,14 @@ export default function Home() {
   const [aiReasoning, setAiReasoning] = useState<string>('');
   const [isLevelComplete, setIsLevelComplete] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const { toast } = useToast();
 
   useEffect(() => {
     // Initialize board on the client side only to prevent hydration errors
     setBoard(initializeBoard(1));
+    setIsLoading(false);
   }, []);
 
 
@@ -59,14 +60,14 @@ export default function Home() {
     setPlayerPieces(newPlayerPieces);
     setEnemyPieces(newEnemyPieces);
 
-    if (level > 0) {
+    if (level > 0 && !isLoading) {
       if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0) {
         setIsLevelComplete(true);
-      } else if (newPlayerPieces.length > 0 && !newPlayerPieces.some(p => p.piece === 'King')) {
+      } else if (newPlayerPieces.length === 0 || !newPlayerPieces.some(p => p.piece === 'King')) {
         setIsGameOver(true);
       }
     }
-  }, [board, level]);
+  }, [board, level, isLoading]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || turn !== 'player' || isLoading || isLevelComplete || isGameOver) return;
@@ -229,20 +230,39 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (turn === 'enemy' && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
+    if (turn === 'enemy' && !isLoading && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
       runEnemyTurn();
     }
-  }, [turn, enemyPieces, runEnemyTurn, isGameOver, isLevelComplete]);
+  }, [turn, isLoading, enemyPieces, runEnemyTurn, isGameOver, isLevelComplete]);
   
   const startNextLevel = (piecesToCarry: Piece[]) => {
+    setIsLoading(true);
     const nextLevel = level + 1;
     setLevel(nextLevel);
-    setBoard(initializeBoard(nextLevel, piecesToCarry));
+    
+    const newBoard = initializeBoard(nextLevel, piecesToCarry);
+
+    const playerPiecesOnNewBoard: Piece[] = [];
+    newBoard.forEach((row) => {
+        row.forEach((tile) => {
+            if (tile?.type === 'piece' && tile.color === 'white') {
+                playerPiecesOnNewBoard.push(tile);
+            }
+        });
+    });
+
+    playerPiecesOnNewBoard.forEach(piece => {
+        checkForAllyRescue({x: piece.x, y: piece.y}, newBoard);
+    });
+
+    setBoard(newBoard);
     setIsLevelComplete(false);
     setTurn('player');
+    setIsLoading(false);
   };
 
   const restartGame = () => {
+    setIsLoading(true);
     setLevel(1);
     setBoard(initializeBoard(1));
     setSelectedPiece(null);
@@ -267,7 +287,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
         <div className="flex-grow flex items-center justify-center">
-          {board ? (
+          {board && !isLoading ? (
             <GameBoard
               board={board}
               onTileClick={handleTileClick}
