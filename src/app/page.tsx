@@ -124,21 +124,14 @@ export default function Home() {
     const targetTile = newBoard[to.y][to.x];
     
     const newPieceState: Piece = {
-        id: piece.id,
-        type: 'piece',
-        piece: piece.piece,
-        color: piece.color,
+        ...piece,
         x: to.x,
         y: to.y,
-        cosmetics: piece.cosmetics
     };
 
     if (newPieceState.piece === 'Pawn') {
-        newPieceState.direction = piece.direction; // Default to old direction
-
         const isOrthogonalMove = from.x === to.x || from.y === to.y;
 
-        // A capture is always diagonal, so it can't be a direction change move.
         if (isOrthogonalMove) {
             let isStandardForwardMove = false;
             if (piece.direction === 'up' && to.y === from.y - 1 && from.x === to.x) isStandardForwardMove = true;
@@ -148,7 +141,6 @@ export default function Home() {
             
             const canLandOn = !targetTile || targetTile.type === 'chest';
 
-            // Direction change only happens on a non-standard-forward, orthogonal move.
             if (!isStandardForwardMove && canLandOn) {
                 if (to.x > from.x) {
                     newPieceState.direction = 'right';
@@ -283,21 +275,14 @@ export default function Home() {
     const newBoard = board.map(row => row.slice());
     
     const newPieceState: Piece = {
-        id: piece.id,
-        type: 'piece',
-        piece: piece.piece,
-        color: piece.color,
+        ...piece,
         x: move.x,
         y: move.y,
-        cosmetics: piece.cosmetics
     };
     
     if (newPieceState.piece === 'Pawn') {
-        newPieceState.direction = piece.direction; // Default to old direction
-
         const isOrthogonalMove = from.x === move.x || from.y === move.y;
 
-        // A capture is always diagonal, so it can't be a direction change move.
         if (isOrthogonalMove) {
             let isStandardForwardMove = false;
             if (piece.direction === 'up' && move.y === from.y - 1 && from.x === move.x) isStandardForwardMove = true;
@@ -307,7 +292,6 @@ export default function Home() {
             
             const canLandOn = !targetTile || targetTile.type === 'chest';
 
-            // Direction change only happens on a non-standard-forward, orthogonal move.
             if (!isStandardForwardMove && canLandOn) {
                 if (move.x > from.x) {
                     newPieceState.direction = 'right';
@@ -325,13 +309,10 @@ export default function Home() {
     newBoard[move.y][move.x] = newPieceState;
     newBoard[from.y][from.x] = null;
     
-    // Defer state updates to prevent visual flicker
-    requestAnimationFrame(() => {
-        setBoard(newBoard);
-        setAiReasoning(`Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`);
-        setIsEnemyThinking(false);
-        setTurn('player');
-    });
+    setBoard(newBoard);
+    setAiReasoning(`Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`);
+    setIsEnemyThinking(false);
+    setTurn('player');
   }, [board, getValidMoves]);
 
 
