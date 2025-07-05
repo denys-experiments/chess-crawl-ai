@@ -2,6 +2,7 @@
 import { useRef } from 'react';
 import type { Board, Position } from '@/types';
 import { Tile } from './tile';
+import { cn } from '@/lib/utils';
 
 interface GameBoardProps {
   board: Board;
@@ -65,7 +66,11 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
     <div 
       ref={containerRef}
       onMouseDown={handleMouseDown}
-      className="w-full max-w-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 overflow-auto cursor-grab flex items-center justify-center"
+      className={cn(
+        "w-full max-w-[calc(100vh-12rem)] max-h-[calc(100vh-12rem)] bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20 cursor-grab",
+        isLargeBoard && "overflow-auto flex items-center justify-center"
+      )}
+      style={!isLargeBoard ? { aspectRatio: `${width} / ${height}` } : {}}
     >
       <div 
         className="grid relative"
@@ -73,10 +78,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
           gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${height}, minmax(0, 1fr))`,
           width: isLargeBoard ? `${width * cellSizeRem}rem` : '100%',
-          height: 'auto',
-          aspectRatio: `${width} / ${height}`,
-          minWidth: isLargeBoard ? '100%' : 'auto',
-          minHeight: isLargeBoard ? '100%' : 'auto',
+          height: isLargeBoard ? `${height * cellSizeRem}rem` : '100%',
         }}
       >
         {board.map((row, y) =>
