@@ -287,6 +287,9 @@ export default function Home() {
         const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
         const validEnemyMoves = moves.filter(move => {
             const targetTile = board[move.y][move.x];
+            if (enemy.piece === 'Pawn' && targetTile?.type === 'chest') {
+                return false;
+            }
             return targetTile?.type !== 'sleeping_ally';
         });
 
@@ -306,11 +309,7 @@ export default function Home() {
             }
             
             if (targetTile?.type === 'chest') {
-                if (enemy.piece === 'Pawn') {
-                    score += 15; // Pawns are encouraged to open chests for promotion
-                } else {
-                    score -= 5; // Other pieces are discouraged from opening chests
-                }
+                score -= 5; // Other pieces are discouraged from opening chests
             }
 
 
