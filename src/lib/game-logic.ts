@@ -11,13 +11,19 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
     board[5][5] = { type: 'wall' };
   }
 
-  // Place king
-  board[7][4] = { type: 'piece', piece: 'King', color: 'white', x: 4, y: 7, id: 'wk' };
+  // Handle player king placement to avoid duplicates
+  const carriedOverKing = carryOverPieces.find(p => p.piece === 'King');
+  if (carriedOverKing) {
+    board[7][4] = { ...carriedOverKing, x: 4, y: 7 };
+  } else {
+    board[7][4] = { type: 'piece', piece: 'King', color: 'white', x: 4, y: 7, id: 'wk' };
+  }
 
-  // Place initial carry-over pieces
+  // Place other initial carry-over pieces
+  const otherCarryOverPieces = carryOverPieces.filter(p => p.piece !== 'King');
   let placedCount = 0;
   const startPositions = [[7,3], [7,5], [6,4]];
-  carryOverPieces.forEach((piece, index) => {
+  otherCarryOverPieces.forEach((piece, index) => {
     if(index < startPositions.length) {
       const [y, x] = startPositions[index];
       board[y][x] = {...piece, x, y};
@@ -26,7 +32,7 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   });
 
 
-  // Place pawns if no carryover
+  // Place pawns if no other pieces were carried over
   if (placedCount === 0) {
     board[6][3] = { type: 'piece', piece: 'Pawn', color: 'white', x: 3, y: 6, id: 'wp1' };
     board[6][4] = { type: 'piece', piece: 'Pawn', color: 'white', x: 4, y: 6, id: 'wp2' };
