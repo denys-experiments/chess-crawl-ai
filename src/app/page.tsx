@@ -52,14 +52,14 @@ export default function Home() {
     }
   }, [board, level]);
 
-  const handleTileClick = (x: number, y: number) => {
+  const handleTileClick = useCallback((x: number, y: number) => {
     if (turn !== 'player' || isLoading) return;
 
     const clickedTile = board[y][x];
 
     if (selectedPiece) {
-      // If clicking the same piece, deselect it.
-      if (selectedPiece.x === x && selectedPiece.y === y) {
+      const isSamePiece = selectedPiece.x === x && selectedPiece.y === y;
+      if (isSamePiece) {
         setSelectedPiece(null);
         setAvailableMoves([]);
         return;
@@ -69,20 +69,17 @@ export default function Home() {
       if (isValidMove) {
         movePiece(selectedPiece, { x, y });
       } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
-        // If another of the player's pieces is clicked, switch selection to that piece.
         setSelectedPiece({ x, y });
         setAvailableMoves(getValidMoves({ x, y }, board));
       } else {
-        // If an empty tile or other invalid spot is clicked, deselect.
         setSelectedPiece(null);
         setAvailableMoves([]);
       }
     } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
-      // If no piece is selected and a player piece is clicked, select it.
       setSelectedPiece({ x, y });
       setAvailableMoves(getValidMoves({ x, y }, board));
     }
-  };
+  }, [turn, isLoading, selectedPiece, availableMoves, board]);
 
   const movePiece = (from: Position, to: Position) => {
     const newBoard = board.map(row => row.slice());
@@ -147,36 +144,51 @@ export default function Home() {
       return;
     }
 
-    // Find all "best moves", one for each enemy piece that can move.
-    const bestMoves = enemies.map(enemy => ({
-      piece: enemy,
-      move: calculateSimpleEnemyMove(enemy, board, playerPieces)
-    })).filter(item => item.move !== null) as { piece: Piece; move: Position }[];
-
-    if (bestMoves.length === 0) {
-      setAiReasoning('Enemy has no available moves.');
-      setIsLoading(false);
-      setTurn('player');
-      return;
-    }
-
-    // From the best moves, prioritize captures.
-    const captureMoves = bestMoves.filter(({ move }) => {
-      const targetTile = board[move.y][move.x];
-      return targetTile?.type === 'piece' && targetTile.color === 'white';
+    const allPossibleMoves: { piece: Piece; move: Position }[] = [];
+    enemies.forEach(enemy => {
+        const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
+        moves.forEach(move => {
+            allPossibleMoves.push({ piece: enemy, move });
+        });
     });
-    
-    let moveToMake: { piece: Piece; move: Position };
 
-    if (captureMoves.length > 0) {
-      // If there are capture moves, pick one of them randomly.
-      moveToMake = captureMoves[Math.floor(Math.random() * captureMoves.length)];
-    } else {
-      // Otherwise, pick any of the best available moves randomly.
-      moveToMake = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    if (allPossibleMoves.length === 0) {
+        setAiReasoning('Enemy has no available moves.');
+        setIsLoading(false);
+        setTurn('player');
+        return;
     }
 
-    const { piece, move } = moveToMake;
+    let bestMove: { piece: Piece, move: Position } | null = null;
+    let highestValue = -1;
+
+    for (const { piece, move } of allPossibleMoves) {
+        const targetTile = board[move.y][move.x];
+        let moveValue = 0; // Default value for a non-capture move
+
+        if (targetTile?.type === 'piece' && targetTile.color === 'white') {
+            switch (targetTile.piece) {
+                case 'Queen': moveValue = 9; break;
+                case 'Rook': moveValue = 5; break;
+                case 'Bishop': moveValue = 3; break;
+                case 'Knight': moveValue = 3; break;
+                case 'Pawn': moveValue = 1; break;
+                case 'King': moveValue = 100; break; // Should be very high
+            }
+        }
+
+        if (moveValue > highestValue) {
+            highestValue = moveValue;
+            bestMove = { piece, move };
+        }
+    }
+
+    // If no capture is available, select a random move
+    if (!bestMove) {
+        bestMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
+    }
+
+    const { piece, move } = bestMove;
     const from = { x: piece.x, y: piece.y };
 
     const newBoard = board.map(row => row.slice());
@@ -190,26 +202,29 @@ export default function Home() {
     
     setIsLoading(false);
     setTurn('player');
-  }, [board, playerPieces]);
+  }, [board]);
 
 
   useEffect(() => {
     if (turn === 'enemy' && enemyPieces.length > 0) {
       runEnemyTurn();
     }
-  }, [turn, enemyPieces.length, runEnemyTurn]);
+  }, [turn, enemyPieces, runEnemyTurn]);
   
-  const startNextLevel = () => {
+  const startNextLevel = (piecesToCarry: Piece[]) => {
     const nextLevel = level + 1;
     setLevel(nextLevel);
-    setBoard(initializeBoard(nextLevel, inventory.pieces));
+    setBoard(initializeBoard(nextLevel, piecesToCarry));
     setIsLevelComplete(false);
     setTurn('player');
   };
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
-      setInventory(prev => ({...prev, pieces: piecesToCarry}));
-      startNextLevel();
+      const king = playerPieces.find(p => p.piece === 'King');
+      const allCarriedPieces = king ? [...piecesToCarry, king] : piecesToCarry;
+
+      setInventory(prev => ({...prev, pieces: allCarriedPieces}));
+      startNextLevel(allCarriedPieces);
   };
 
   return (
@@ -244,6 +259,11 @@ export default function Home() {
 function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isOpen: boolean; level: number; playerPieces: Piece[]; onNextLevel: (pieces: Piece[]) => void; }) {
     const [selectedPieces, setSelectedPieces] = useState<Piece[]>([]);
     const maxCarryOver = Math.floor(level / 2) + 1;
+    const selectablePieces = playerPieces.filter(p => p.piece !== 'King');
+
+    useEffect(() => {
+        setSelectedPieces([]);
+    }, [isOpen]);
 
     const togglePieceSelection = (piece: Piece) => {
         setSelectedPieces(prev => {
@@ -268,11 +288,11 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                 <DialogHeader>
                     <DialogTitle>Level {level} Complete!</DialogTitle>
                     <DialogDescription>
-                        Congratulations! You've cleared the dungeon level. Select up to {maxCarryOver} pieces to bring to the next level.
+                        Congratulations! Your King is automatically carried over. Select up to {maxCarryOver} additional pieces to bring to the next level.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-4 gap-4 py-4">
-                    {playerPieces.map(piece => (
+                    {selectablePieces.map(piece => (
                         <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-border'}`}>
                              <span className="text-4xl">{getPieceUnicode(piece)}</span>
                              <span className="text-xs text-muted-foreground">{piece.piece}</span>
