@@ -85,21 +85,7 @@ export default function Home() {
   
   const { toast } = useToast();
 
-  const startNewGame = useCallback(() => {
-    setIsLoading(true);
-    const { board: newBoard, factions } = initializeBoard(1);
-    checkForInitialRescues(newBoard);
-    setBoard(newBoard);
-    setActiveEnemyFactions(factions);
-    setTurnIndex(0);
-    setIsLoading(false);
-  }, []);
-  
-  useEffect(() => {
-    startNewGame();
-  }, [startNewGame]);
-
-  const checkForInitialRescues = (initialBoard: Board) => {
+  const checkForInitialRescues = useCallback((initialBoard: Board) => {
     const playerPiecesOnBoard: Piece[] = [];
     initialBoard.forEach((row) => {
         row.forEach((tile) => {
@@ -111,7 +97,42 @@ export default function Home() {
     playerPiecesOnBoard.forEach(piece => {
         checkForAllyRescue({x: piece.x, y: piece.y}, initialBoard);
     });
-  }
+  }, []);
+  
+  const startNewGame = useCallback(() => {
+    setIsLoading(true);
+    const { board: newBoard, factions } = initializeBoard(1);
+    checkForInitialRescues(newBoard);
+    setBoard(newBoard);
+    setActiveEnemyFactions(factions);
+    setTurnIndex(0);
+    setIsLoading(false);
+  }, [checkForInitialRescues]);
+  
+  useEffect(() => {
+    startNewGame();
+  }, [startNewGame]);
+
+  const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board) => {
+    const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    const height = currentBoard.length;
+    const width = currentBoard[0]?.length || 0;
+    
+    directions.forEach(([dx, dy]) => {
+      const nx = pos.x + dx;
+      const ny = pos.y + dy;
+      if (isWithinBoard(nx, ny, currentBoard)) {
+        const adjacentTile = currentBoard[ny][nx];
+        if (adjacentTile?.type === 'sleeping_ally') {
+          const newPieceType = adjacentTile.piece;
+          currentBoard[ny][nx] = { type: 'piece', piece: newPieceType, color: 'white', x: nx, y: ny, id: `${nx}-${ny}-${Date.now()}` };
+          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
+          // Recursive call to check for chain reactions
+          checkForAllyRescue({ x: nx, y: ny }, currentBoard);
+        }
+      }
+    });
+  }, [toast]);
 
   useEffect(() => {
     if (!board) return;
@@ -141,36 +162,7 @@ export default function Home() {
     }
   }, [board, level, isLoading]);
 
-  const handleTileClick = useCallback((x: number, y: number) => {
-    if (!board || currentTurn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
-
-    const clickedTile = board[y][x];
-
-    if (selectedPiece) {
-      const isSamePiece = selectedPiece.x === x && selectedPiece.y === y;
-      if (isSamePiece) {
-        setSelectedPiece(null);
-        setAvailableMoves([]);
-        return;
-      }
-
-      const isValidMove = availableMoves.some(move => move.x === x && move.y === y);
-      if (isValidMove) {
-        movePiece(selectedPiece, { x, y });
-      } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
-        setSelectedPiece({ x, y });
-        setAvailableMoves(getValidMoves({ x, y }, board));
-      } else {
-        setSelectedPiece(null);
-        setAvailableMoves([]);
-      }
-    } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
-      setSelectedPiece({ x, y });
-      setAvailableMoves(getValidMoves({ x, y }, board));
-    }
-  }, [currentTurn, isEnemyThinking, selectedPiece, availableMoves, board, isLevelComplete, isGameOver]);
-
-  const movePiece = (from: Position, to: Position) => {
+  const movePiece = useCallback((from: Position, to: Position) => {
     if (!board) return;
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     const pieceToMove = JSON.parse(JSON.stringify(newBoard[from.y][from.x] as Piece));
@@ -241,28 +233,36 @@ export default function Home() {
     setSelectedPiece(null);
     setAvailableMoves([]);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  };
+  }, [board, checkForAllyRescue, inventory, level, playerPieces, toast, turnOrder]);
 
-  const checkForAllyRescue = (pos: Position, currentBoard: Board) => {
-    const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    const height = currentBoard.length;
-    const width = currentBoard[0]?.length || 0;
-    
-    directions.forEach(([dx, dy]) => {
-      const nx = pos.x + dx;
-      const ny = pos.y + dy;
-      if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-        const adjacentTile = currentBoard[ny][nx];
-        if (adjacentTile?.type === 'sleeping_ally') {
-          const newPieceType = adjacentTile.piece;
-          currentBoard[ny][nx] = { type: 'piece', piece: newPieceType, color: 'white', x: nx, y: ny, id: `${nx}-${ny}-${Date.now()}` };
-          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
-          // Recursive call to check for chain reactions
-          checkForAllyRescue({ x: nx, y: ny }, currentBoard);
-        }
+  const handleTileClick = useCallback((x: number, y: number) => {
+    if (!board || currentTurn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
+
+    const clickedTile = board[y][x];
+
+    if (selectedPiece) {
+      const isSamePiece = selectedPiece.x === x && selectedPiece.y === y;
+      if (isSamePiece) {
+        setSelectedPiece(null);
+        setAvailableMoves([]);
+        return;
       }
-    });
-  }
+
+      const isValidMove = availableMoves.some(move => move.x === x && move.y === y);
+      if (isValidMove) {
+        movePiece(selectedPiece, { x, y });
+      } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
+        setSelectedPiece({ x, y });
+        setAvailableMoves(getValidMoves({ x, y }, board));
+      } else {
+        setSelectedPiece(null);
+        setAvailableMoves([]);
+      }
+    } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
+      setSelectedPiece({ x, y });
+      setAvailableMoves(getValidMoves({ x, y }, board));
+    }
+  }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece]);
   
   const runEnemyTurn = useCallback(async (factionColor: string) => {
     if (!board || !playerPieces) return;
@@ -402,7 +402,7 @@ export default function Home() {
 
     setIsEnemyThinking(false);
     setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  }, [board, playerPieces, getValidMoves, enemyPieces, turnOrder.length]);
+  }, [board, playerPieces, enemyPieces, turnOrder.length]);
 
 
   useEffect(() => {
