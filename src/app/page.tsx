@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Piece, Board, Position, PieceType } from '@/types';
+import type { Piece, Board, Position, PieceType, Tile } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
 import { initializeBoard, getValidMoves, isWithinBoard } from '@/lib/game-logic';
@@ -210,8 +210,8 @@ export default function Home() {
     }
 
     if (targetTile?.type === 'chest') {
+      const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
       if (pieceToMove.piece === 'Pawn') {
-        const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
         const newPieceType = getPromotionPiece(level, currentPlayerPieces);
         newPieceState = {
           ...newPieceState,
@@ -280,12 +280,22 @@ export default function Home() {
     }
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece]);
   
-  const runEnemyTurn = useCallback(async (factionColor: string) => {
+  const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
+    let reasoning = `${factionColor.charAt(0).toUpperCase() + factionColor.slice(1)} faction's ${movedPiece.piece} moves to column ${movedPiece.x + 1}, row ${movedPiece.y + 1}.`;
+    if (targetTile?.type === 'piece') {
+        reasoning += ` Capturing a ${targetTile.color} ${targetTile.piece}.`;
+    }
+    
+    setAiReasoning(reasoning);
+    setIsEnemyThinking(false);
+    setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+  }, [turnOrder]);
+
+  const runEnemyTurn = useCallback((factionColor: string) => {
     if (!board) return;
     setIsEnemyThinking(true);
     setAiReasoning('');
 
-    // Derive pieces from the current board to avoid stale state
     const currentPieces: Piece[] = [];
     board.forEach(row => row.forEach(tile => {
         if (tile?.type === 'piece') {
@@ -383,7 +393,7 @@ export default function Home() {
     const from = { x: pieceToMove.x, y: pieceToMove.y };
     
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
-    const targetTile = newBoard[move.y][move.x];
+    const targetTile = newBoard[move.y][move.x] ? JSON.parse(JSON.stringify(newBoard[move.y][move.x])) : null;
     
     let newPieceState: Piece = { ...pieceToMove, x: move.x, y: move.y };
     
@@ -411,17 +421,10 @@ export default function Home() {
     
     setBoard(newBoard);
 
-    let reasoning = `${factionColor.charAt(0).toUpperCase() + factionColor.slice(1)} faction's ${pieceToMove.piece} moves to column ${move.x + 1}, row ${move.y + 1}.`;
-    if (targetTile?.type === 'piece') {
-        reasoning += ` Capturing a ${targetTile.color} ${targetTile.piece}.`;
-    }
-    
-    await new Promise(res => setTimeout(res, 300)); // allow animation to play
-
-    setAiReasoning(reasoning);
-    setIsEnemyThinking(false);
-    setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  }, [board, turnOrder]);
+    setTimeout(() => {
+        finishEnemyTurn(factionColor, newPieceState, targetTile);
+    }, 300);
+  }, [board, turnOrder, finishEnemyTurn]);
 
 
   useEffect(() => {
