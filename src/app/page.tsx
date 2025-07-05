@@ -119,11 +119,11 @@ export default function Home() {
 
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
-    const newBoard = board.map(row => row.slice());
+    const newBoard = board.map(row => [...row]);
     const piece = newBoard[from.y][from.x] as Piece;
     const targetTile = newBoard[to.y][to.x];
     
-    const newPieceState: Piece = {
+    let newPieceState: Piece = {
         ...piece,
         x: to.x,
         y: to.y,
@@ -131,27 +131,23 @@ export default function Home() {
 
     if (newPieceState.piece === 'Pawn') {
         const isOrthogonalMove = from.x === to.x || from.y === to.y;
+        const isStandardForwardMove =
+            (piece.direction === 'up' && to.y === from.y - 1 && from.x === to.x) ||
+            (piece.direction === 'down' && to.y === from.y + 1 && from.x === to.x) ||
+            (piece.direction === 'left' && to.x === from.x - 1 && from.y === to.y) ||
+            (piece.direction === 'right' && to.x === from.x + 1 && from.y === to.y);
 
-        if (isOrthogonalMove) {
-            let isStandardForwardMove = false;
-            if (piece.direction === 'up' && to.y === from.y - 1 && from.x === to.x) isStandardForwardMove = true;
-            if (piece.direction === 'down' && to.y === from.y + 1 && from.x === to.x) isStandardForwardMove = true;
-            if (piece.direction === 'left' && to.x === from.x - 1 && from.y === to.y) isStandardForwardMove = true;
-            if (piece.direction === 'right' && to.x === from.x + 1 && from.y === to.y) isStandardForwardMove = true;
-            
-            const canLandOn = !targetTile || targetTile.type === 'chest';
+        const canLandOn = !targetTile || targetTile.type === 'chest';
 
-            if (!isStandardForwardMove && canLandOn) {
-                if (to.x > from.x) {
-                    newPieceState.direction = 'right';
-                } else if (to.x < from.x) {
-                    newPieceState.direction = 'left';
-                } else if (to.y > from.y) {
-                    newPieceState.direction = 'down';
-                } else if (to.y < from.y) {
-                    newPieceState.direction = 'up';
-                }
-            }
+        if (isOrthogonalMove && !isStandardForwardMove && canLandOn) {
+            let newDirection = newPieceState.direction;
+            if (to.x > from.x) newDirection = 'right';
+            else if (to.x < from.x) newDirection = 'left';
+            else if (to.y > from.y) newDirection = 'down';
+            else if (to.y < from.y) newDirection = 'up';
+            newPieceState = {...newPieceState, direction: newDirection};
+        } else {
+             newPieceState = {...newPieceState, direction: piece.direction};
         }
     }
 
@@ -191,7 +187,7 @@ export default function Home() {
   }
   
   const runEnemyTurn = useCallback(async () => {
-    if (!board) return;
+    if (!board || !playerPieces) return;
     setIsEnemyThinking(true);
     setAiReasoning('');
 
@@ -211,8 +207,8 @@ export default function Home() {
       return;
     }
 
-    let bestMove: { piece: Piece, move: Position } | null = null;
-    let highestValue = -1;
+    const allPossibleMoves: { piece: Piece; move: Position; score: number }[] = [];
+    const playerKing = playerPieces.find(p => p.piece === 'King');
 
     for (const enemy of enemies) {
         const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
@@ -222,59 +218,72 @@ export default function Home() {
         });
 
         for (const move of validEnemyMoves) {
+            let score = 0;
             const targetTile = board[move.y][move.x];
-            let moveValue = 0;
 
+            // 1. Capture score
             if (targetTile?.type === 'piece' && targetTile.color === 'white') {
                 switch (targetTile.piece) {
-                    case 'Queen': moveValue = 9; break;
-                    case 'Rook': moveValue = 5; break;
-                    case 'Bishop': moveValue = 3; break;
-                    case 'Knight': moveValue = 3; break;
-                    case 'Pawn': moveValue = 1; break;
-                    case 'King': moveValue = 100; break;
+                    case 'Queen': score += 90; break;
+                    case 'Rook': score += 50; break;
+                    case 'Bishop': score += 30; break;
+                    case 'Knight': score += 30; break;
+                    case 'Pawn': score += 10; break;
+                    case 'King': score += 1000; break;
                 }
             }
 
-            if (moveValue > highestValue) {
-                highestValue = moveValue;
-                bestMove = { piece: enemy, move };
+            // 2. Move towards player king
+            if (playerKing) {
+                const currentDist = Math.abs(enemy.x - playerKing.x) + Math.abs(enemy.y - playerKing.y);
+                const newDist = Math.abs(move.x - playerKing.x) + Math.abs(move.y - playerKing.y);
+                if (newDist < currentDist) {
+                    score += 5;
+                }
+            } else if (playerPieces.length > 0) {
+                 const closestPlayer = [...playerPieces].sort((a,b) => (Math.abs(enemy.x - a.x) + Math.abs(enemy.y - a.y)) - (Math.abs(enemy.x - b.x) + Math.abs(enemy.y - b.y)))[0];
+                 if(closestPlayer) {
+                     const currentDist = Math.abs(enemy.x - closestPlayer.x) + Math.abs(enemy.y - closestPlayer.y);
+                     const newDist = Math.abs(move.x - closestPlayer.x) + Math.abs(move.y - closestPlayer.y);
+                     if (newDist < currentDist) {
+                         score += 2;
+                     }
+                 }
             }
-        }
-    }
+            
+            // 3. Centrality score
+            const centrality = (4 - Math.abs(move.x - 3.5)) + (4 - Math.abs(move.y - 3.5));
+            score += centrality / 4; 
 
-    if (!bestMove) {
-        const allPossibleMoves: { piece: Piece; move: Position }[] = [];
-        enemies.forEach(enemy => {
-            const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
-            const validEnemyMoves = moves.filter(move => {
-                const targetTile = board[move.y][move.x];
-                return targetTile?.type !== 'chest' && targetTile?.type !== 'sleeping_ally';
-            });
-            validEnemyMoves.forEach(move => {
-                allPossibleMoves.push({ piece: enemy, move });
-            });
-        });
-        
-        if (allPossibleMoves.length > 0) {
-            bestMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
+            // 4. King movement penalty
+            if (enemy.piece === 'King') {
+                score -= 5;
+            }
+            
+            // 5. Randomness to break ties
+            score += Math.random() * 0.5;
+
+            allPossibleMoves.push({ piece: enemy, move, score });
         }
     }
     
-    if (!bestMove) {
+    if (allPossibleMoves.length === 0) {
         setAiReasoning('Enemy has no available moves.');
         setIsEnemyThinking(false);
         setTurn('player');
         return;
     }
 
+    allPossibleMoves.sort((a, b) => b.score - a.score);
+    const bestMove = allPossibleMoves[0];
+
     const { piece, move } = bestMove;
     const from = { x: piece.x, y: piece.y };
     const targetTile = board[move.y][move.x];
 
-    const newBoard = board.map(row => row.slice());
+    const newBoard = board.map(row => [...row]);
     
-    const newPieceState: Piece = {
+    let newPieceState: Piece = {
         ...piece,
         x: move.x,
         y: move.y,
@@ -282,27 +291,23 @@ export default function Home() {
     
     if (newPieceState.piece === 'Pawn') {
         const isOrthogonalMove = from.x === move.x || from.y === move.y;
+        const isStandardForwardMove = 
+            (piece.direction === 'up' && move.y === from.y - 1 && from.x === move.x) ||
+            (piece.direction === 'down' && move.y === from.y + 1 && from.x === move.x) ||
+            (piece.direction === 'left' && move.x === from.x - 1 && from.y === move.y) ||
+            (piece.direction === 'right' && move.x === from.x + 1 && from.y === move.y);
 
-        if (isOrthogonalMove) {
-            let isStandardForwardMove = false;
-            if (piece.direction === 'up' && move.y === from.y - 1 && from.x === move.x) isStandardForwardMove = true;
-            if (piece.direction === 'down' && move.y === from.y + 1 && from.x === move.x) isStandardForwardMove = true;
-            if (piece.direction === 'left' && move.x === from.x - 1 && from.y === move.y) isStandardForwardMove = true;
-            if (piece.direction === 'right' && move.x === from.x + 1 && from.y === move.y) isStandardForwardMove = true;
-            
-            const canLandOn = !targetTile || targetTile.type === 'chest';
+        const canLandOn = !targetTile || targetTile.type === 'chest';
 
-            if (!isStandardForwardMove && canLandOn) {
-                if (move.x > from.x) {
-                    newPieceState.direction = 'right';
-                } else if (move.x < from.x) {
-                    newPieceState.direction = 'left';
-                } else if (move.y > from.y) {
-                    newPieceState.direction = 'down';
-                } else if (move.y < from.y) {
-                    newPieceState.direction = 'up';
-                }
-            }
+        if (isOrthogonalMove && !isStandardForwardMove && canLandOn) {
+            let newDirection = newPieceState.direction;
+            if (move.x > from.x) newDirection = 'right';
+            else if (move.x < from.x) newDirection = 'left';
+            else if (move.y > from.y) newDirection = 'down';
+            else if (move.y < from.y) newDirection = 'up';
+            newPieceState = {...newPieceState, direction: newDirection};
+        } else {
+            newPieceState = {...newPieceState, direction: piece.direction};
         }
     }
 
@@ -310,10 +315,16 @@ export default function Home() {
     newBoard[from.y][from.x] = null;
     
     setBoard(newBoard);
-    setAiReasoning(`Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`);
+
+    let reasoning = `Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`;
+    if (targetTile?.type === 'piece') {
+        reasoning += ` Capturing a ${targetTile.piece}.`;
+    }
+    setAiReasoning(reasoning);
+
     setIsEnemyThinking(false);
     setTurn('player');
-  }, [board, getValidMoves]);
+  }, [board, playerPieces, getValidMoves]);
 
 
   useEffect(() => {
