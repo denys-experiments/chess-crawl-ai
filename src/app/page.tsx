@@ -163,7 +163,7 @@ export default function Home() {
 
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
-    const newBoard = board.map(row => row.map(tile => ({...tile})));
+    const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     const pieceToMove = JSON.parse(JSON.stringify(newBoard[from.y][from.x])) as Piece;
     const targetTile = newBoard[to.y][to.x];
 
@@ -175,12 +175,13 @@ export default function Home() {
     
     if (pieceToMove.piece === 'Pawn') {
         const isOrthogonalMove = from.x === to.x || from.y === to.y;
+        
         const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-        const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
+        const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection] as {x?: number, y?: number};
         
         const isStandardForwardMove = 
-            (forwardVector.y !== undefined && to.y === from.y + forwardVector.y && from.x === to.x && !targetTile) || 
-            (forwardVector.x !== undefined && to.x === from.x + forwardVector.x && from.y === to.y && !targetTile);
+            (forwardVector.y !== undefined && to.y === from.y + forwardVector.y && from.x === to.x) || 
+            (forwardVector.x !== undefined && to.x === from.x + forwardVector.x && from.y === to.y);
 
         if (isOrthogonalMove && !isStandardForwardMove) {
              let newDirection = pieceToMove.direction;
@@ -337,7 +338,7 @@ export default function Home() {
     const from = { x: pieceToMove.x, y: pieceToMove.y };
     const targetTile = board[move.y][move.x];
 
-    const newBoard = board.map(row => row.map(tile => ({...tile})));
+    const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     
     let newPieceState: Piece = JSON.parse(JSON.stringify(newBoard[from.y][from.x] as Piece));
     newPieceState.x = move.x;
@@ -346,11 +347,11 @@ export default function Home() {
     if (pieceToMove.piece === 'Pawn') {
         const isOrthogonalMove = from.x === move.x || from.y === move.y;
         const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-        const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection];
+        const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection] as {x?: number, y?: number};
         
         const isStandardForwardMove = 
-            (forwardVector.y !== undefined && move.y === from.y + forwardVector.y && from.x === move.x && !targetTile) || 
-            (forwardVector.x !== undefined && move.x === from.x + forwardVector.x && from.y === move.y && !targetTile);
+            (forwardVector.y !== undefined && move.y === from.y + forwardVector.y && from.x === move.x) || 
+            (forwardVector.x !== undefined && move.x === from.x + forwardVector.x && from.y === move.y);
         
         if (isOrthogonalMove && !isStandardForwardMove) {
             let newDirection = pieceToMove.direction;
