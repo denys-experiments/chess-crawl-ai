@@ -2,19 +2,31 @@
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 
 function getRandomAllyPiece(level: number): PieceType {
-  let availablePieces: PieceType[];
-  if (level <= 1) {
-    availablePieces = ['Pawn', 'Knight'];
-  } else if (level <= 2) {
-    availablePieces = ['Pawn', 'Knight', 'Bishop'];
-  } else if (level <= 3) {
-    availablePieces = ['Knight', 'Bishop'];
-  } else if (level < 5) {
-    availablePieces = ['Knight', 'Bishop', 'Rook'];
-  } else {
-    availablePieces = ['Bishop', 'Rook', 'Queen'];
+  const pieceWeights: { piece: PieceType; weight: number; minLevel: number }[] = [
+    { piece: 'Pawn', weight: 5, minLevel: 1 },
+    { piece: 'Knight', weight: 4, minLevel: 1 },
+    { piece: 'Bishop', weight: 3, minLevel: 2 },
+    { piece: 'Rook', weight: 2, minLevel: 4 },
+    { piece: 'Queen', weight: 1, minLevel: 6 },
+  ];
+
+  const availablePieces = pieceWeights.filter(p => level >= p.minLevel);
+
+  if (availablePieces.length === 0) {
+    return 'Pawn'; // Should not happen with minLevel 1 pieces
   }
-  return availablePieces[Math.floor(Math.random() * availablePieces.length)];
+
+  const totalWeight = availablePieces.reduce((sum, p) => sum + p.weight, 0);
+  let random = Math.random() * totalWeight;
+
+  for (const piece of availablePieces) {
+    if (random < piece.weight) {
+      return piece.piece;
+    }
+    random -= piece.weight;
+  }
+  
+  return availablePieces[availablePieces.length - 1].piece; // Fallback
 }
 
 function shuffle<T>(array: T[]): T[] {
