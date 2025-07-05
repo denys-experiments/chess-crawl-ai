@@ -123,39 +123,52 @@ export default function Home() {
     const piece = newBoard[from.y][from.x] as Piece;
     const targetTile = newBoard[to.y][to.x];
     
-    let pieceToMove = {...piece};
+    const newPieceState: Piece = {
+        id: piece.id,
+        type: 'piece',
+        piece: piece.piece,
+        color: piece.color,
+        x: to.x,
+        y: to.y,
+        cosmetics: piece.cosmetics
+    };
 
-    if (pieceToMove.piece === 'Pawn' && !targetTile) {
-      const currentDirection = pieceToMove.direction || (piece.color === 'white' ? 'up' : 'down');
-      const isStandardForwardMove = 
-        (currentDirection === 'up' && to.x === from.x && to.y === from.y - 1) ||
-        (currentDirection === 'down' && to.x === from.x && to.y === from.y + 1) ||
-        (currentDirection === 'left' && to.y === from.y && to.x === from.x - 1) ||
-        (currentDirection === 'right' && to.y === from.y && to.x === from.x + 1);
+    if (newPieceState.piece === 'Pawn') {
+        newPieceState.direction = piece.direction;
 
-      if (!isStandardForwardMove) {
-        if (to.x > from.x) {
-          pieceToMove.direction = 'right';
-        } else if (to.x < from.x) {
-          pieceToMove.direction = 'left';
-        } else if (to.y > from.y) {
-          pieceToMove.direction = 'down';
-        } else if (to.y < from.y) {
-          pieceToMove.direction = 'up';
+        const isMoveToEmptySquare = !targetTile;
+        if (isMoveToEmptySquare) {
+            const currentDirection = piece.direction || (piece.color === 'white' ? 'up' : 'down');
+            const isStandardForwardMove =
+                (currentDirection === 'up' && to.x === from.x && to.y === from.y - 1) ||
+                (currentDirection === 'down' && to.x === from.x && to.y === from.y + 1) ||
+                (currentDirection === 'left' && to.y === from.y && to.x === from.x - 1) ||
+                (currentDirection === 'right' && to.y === from.y && to.x === from.x + 1);
+            
+            if (!isStandardForwardMove) {
+                 if (to.x > from.x) {
+                    newPieceState.direction = 'right';
+                } else if (to.x < from.x) {
+                    newPieceState.direction = 'left';
+                } else if (to.y > from.y) {
+                    newPieceState.direction = 'down';
+                } else if (to.y < from.y) {
+                    newPieceState.direction = 'up';
+                }
+            }
         }
-      }
     }
 
     if (targetTile) {
       if(targetTile.type === 'chest') {
         const cosmetic = "sunglasses";
-        pieceToMove.cosmetics = [...(pieceToMove.cosmetics || []), cosmetic];
+        newPieceState.cosmetics = [...(newPieceState.cosmetics || []), cosmetic];
         setInventory(prev => ({...prev, cosmetics: [...prev.cosmetics, cosmetic]}));
         toast({ title: "Chest Opened!", description: `Your ${piece.piece} found sunglasses!` });
       }
     }
 
-    newBoard[to.y][to.x] = { ...pieceToMove, x: to.x, y: to.y };
+    newBoard[to.y][to.x] = newPieceState;
     newBoard[from.y][from.x] = null;
     
     checkForAllyRescue(to, newBoard);
@@ -264,30 +277,44 @@ export default function Home() {
     const targetTile = board[move.y][move.x];
 
     const newBoard = board.map(row => row.slice());
-    let pieceToMove = { ...(newBoard[from.y][from.x] as Piece) };
     
-    if (pieceToMove.piece === 'Pawn' && !targetTile) {
-      const currentDirection = pieceToMove.direction || (piece.color === 'white' ? 'up' : 'down');
-      const isStandardForwardMove = 
-        (currentDirection === 'up' && move.x === from.x && move.y === from.y - 1) ||
-        (currentDirection === 'down' && move.x === from.x && move.y === from.y + 1) ||
-        (currentDirection === 'left' && move.y === from.y && move.x === from.x - 1) ||
-        (currentDirection === 'right' && move.y === from.y && move.x === from.x + 1);
+    const newPieceState: Piece = {
+        id: piece.id,
+        type: 'piece',
+        piece: piece.piece,
+        color: piece.color,
+        x: move.x,
+        y: move.y,
+        cosmetics: piece.cosmetics
+    };
+    
+    if (newPieceState.piece === 'Pawn') {
+        newPieceState.direction = piece.direction;
 
-      if (!isStandardForwardMove) {
-        if (move.x > from.x) {
-            pieceToMove.direction = 'right';
-        } else if (move.x < from.x) {
-            pieceToMove.direction = 'left';
-        } else if (move.y > from.y) {
-            pieceToMove.direction = 'down';
-        } else if (move.y < from.y) {
-            pieceToMove.direction = 'up';
+        const isMoveToEmptySquare = !targetTile;
+        if (isMoveToEmptySquare) {
+            const currentDirection = piece.direction || (piece.color === 'white' ? 'up' : 'down');
+            const isStandardForwardMove = 
+            (currentDirection === 'up' && move.x === from.x && move.y === from.y - 1) ||
+            (currentDirection === 'down' && move.x === from.x && move.y === from.y + 1) ||
+            (currentDirection === 'left' && move.y === from.y && move.x === from.x - 1) ||
+            (currentDirection === 'right' && move.y === from.y && move.x === from.x + 1);
+
+            if (!isStandardForwardMove) {
+            if (move.x > from.x) {
+                newPieceState.direction = 'right';
+            } else if (move.x < from.x) {
+                newPieceState.direction = 'left';
+            } else if (move.y > from.y) {
+                newPieceState.direction = 'down';
+            } else if (move.y < from.y) {
+                newPieceState.direction = 'up';
+            }
+            }
         }
-      }
     }
 
-    newBoard[move.y][move.x] = { ...pieceToMove, x: move.x, y: move.y };
+    newBoard[move.y][move.x] = newPieceState;
     newBoard[from.y][from.x] = null;
     
     // Defer state updates to prevent visual flicker
@@ -338,7 +365,7 @@ export default function Home() {
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
       const king = playerPieces.find(p => p.piece === 'King');
-      const allCarriedPieces = king ? [...piecesToCarry, {...king, cosmetics: king.cosmetics}] : piecesToCarry;
+      const allCarriedPieces = king ? [...piecesToCarry, {...king, cosmetics: king.cosmetics, id: `wk-${Date.now()}`}] : piecesToCarry;
 
       setInventory(prev => ({...prev, pieces: allCarriedPieces}));
       startNextLevel(allCarriedPieces);
@@ -457,5 +484,3 @@ function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () 
     </Dialog>
   );
 }
-
-    
