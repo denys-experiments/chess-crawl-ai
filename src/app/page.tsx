@@ -129,15 +129,12 @@ export default function Home() {
       const isMoveToEmptySquare = !targetTile;
   
       if (isMoveToEmptySquare) {
-        let isStandardForwardMove = false;
         const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-  
-        switch (currentDirection) {
-          case 'up':    isStandardForwardMove = to.x === from.x && to.y < from.y; break;
-          case 'down':  isStandardForwardMove = to.x === from.x && to.y > from.y; break;
-          case 'left':  isStandardForwardMove = to.y === from.y && to.x < from.x; break;
-          case 'right': isStandardForwardMove = to.y === from.y && to.x > from.x; break;
-        }
+        let isStandardForwardMove = false;
+        if (currentDirection === 'up' && to.x === from.x && to.y === from.y - 1) isStandardForwardMove = true;
+        else if (currentDirection === 'down' && to.x === from.x && to.y === from.y + 1) isStandardForwardMove = true;
+        else if (currentDirection === 'left' && to.y === from.y && to.x === from.x - 1) isStandardForwardMove = true;
+        else if (currentDirection === 'right' && to.y === from.y && to.x === from.x + 1) isStandardForwardMove = true;
   
         if (!isStandardForwardMove) {
           if (to.x > from.x) {
@@ -276,14 +273,13 @@ export default function Home() {
     if (pieceToMove.piece === 'Pawn') {
         const isMoveToEmptySquare = !targetTile;
         if (isMoveToEmptySquare) {
-            let isStandardForwardMove = false;
             const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
-            switch (currentDirection) {
-                case 'up': isStandardForwardMove = move.x === from.x && move.y < from.y; break;
-                case 'down': isStandardForwardMove = move.x === from.x && move.y > from.y; break;
-                case 'left': isStandardForwardMove = move.y === from.y && move.x < from.x; break;
-                case 'right': isStandardForwardMove = move.y === from.y && move.x > from.x; break;
-            }
+            let isStandardForwardMove = false;
+            if (currentDirection === 'up' && move.x === from.x && move.y === from.y - 1) isStandardForwardMove = true;
+            else if (currentDirection === 'down' && move.x === from.x && move.y === from.y + 1) isStandardForwardMove = true;
+            else if (currentDirection === 'left' && move.y === from.y && move.x === from.x - 1) isStandardForwardMove = true;
+            else if (currentDirection === 'right' && move.y === from.y && move.x === from.x + 1) isStandardForwardMove = true;
+            
             if (!isStandardForwardMove) {
                 if (move.x > from.x) {
                     pieceToMove.direction = 'right';

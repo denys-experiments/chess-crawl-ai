@@ -179,16 +179,24 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
 
   adjacentOffsets.forEach(adj => {
     const obstaclePos = { x: x + adj.offset.x, y: y + adj.offset.y };
-    if (isWithinBoard(obstaclePos.x, obstaclePos.y)) {
+    let isBlocked = false;
+
+    if (!isWithinBoard(obstaclePos.x, obstaclePos.y)) {
+      isBlocked = true;
+    } else {
       const obstacle = board[obstaclePos.y][obstaclePos.x];
-      if (obstacle) { 
-        const movePos = { x: x - adj.offset.x, y: y - adj.offset.y };
-        if (isWithinBoard(movePos.x, movePos.y)) {
-          const targetTile = board[movePos.y][movePos.x];
-          if (!targetTile) {
-            if (!moves.some(m => m.x === movePos.x && m.y === movePos.y)) {
-              moves.push(movePos);
-            }
+      if (obstacle) {
+        isBlocked = true;
+      }
+    }
+
+    if (isBlocked) {
+      const movePos = { x: x - adj.offset.x, y: y - adj.offset.y };
+      if (isWithinBoard(movePos.x, movePos.y)) {
+        const targetTile = board[movePos.y][movePos.x];
+        if (!targetTile) {
+          if (!moves.some(m => m.x === movePos.x && m.y === movePos.y)) {
+            moves.push(movePos);
           }
         }
       }
