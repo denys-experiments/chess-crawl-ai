@@ -175,6 +175,15 @@ export default function Home() {
       }
     }
   }, [board, level, isLoading]);
+  
+  // Recalculate available moves whenever the selected piece or the board changes.
+  useEffect(() => {
+    if (selectedPiece && board) {
+      setAvailableMoves(getValidMoves(selectedPiece, board));
+    } else {
+      setAvailableMoves([]);
+    }
+  }, [selectedPiece, board]);
 
   const movePiece = useCallback((from: Position, to: Position) => {
     if (!board) return;
@@ -254,32 +263,35 @@ export default function Home() {
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (!board || currentTurn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
+    if (!board || isLevelComplete || isGameOver) return;
+
+    const isPlayerTurn = currentTurn === 'player' && !isEnemyThinking;
+
+    // Case 1: A piece is selected and the click is on a valid move tile.
+    if (selectedPiece && availableMoves.some(move => move.x === x && move.y === y)) {
+      if (isPlayerTurn) {
+        movePiece(selectedPiece, { x, y });
+      }
+      // If not player's turn, do nothing, preserving the selection.
+      return;
+    }
 
     const clickedTile = board[y][x];
 
-    if (selectedPiece) {
-      const isSamePiece = selectedPiece.x === x && selectedPiece.y === y;
-      if (isSamePiece) {
+    // Case 2: The click is on a friendly piece.
+    if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
+      // If clicking the same piece, deselect it. Otherwise, select the new piece.
+      if (selectedPiece && selectedPiece.x === x && selectedPiece.y === y) {
         setSelectedPiece(null);
-        setAvailableMoves([]);
-        return;
-      }
-
-      const isValidMove = availableMoves.some(move => move.x === x && move.y === y);
-      if (isValidMove) {
-        movePiece(selectedPiece, { x, y });
-      } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
-        setSelectedPiece({ x, y });
-        setAvailableMoves(getValidMoves({ x, y }, board));
       } else {
-        setSelectedPiece(null);
-        setAvailableMoves([]);
+        setSelectedPiece({ x, y });
       }
-    } else if (clickedTile?.type === 'piece' && clickedTile.color === 'white') {
-      setSelectedPiece({ x, y });
-      setAvailableMoves(getValidMoves({ x, y }, board));
+      return;
     }
+
+    // Case 3: The click is anywhere else (empty tile, enemy piece not in a valid move, etc.). Deselect.
+    setSelectedPiece(null);
+
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
