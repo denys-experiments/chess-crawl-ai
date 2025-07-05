@@ -241,6 +241,7 @@ export default function Home() {
         const newPieceType = getPromotionPiece(level, currentPlayerPieces);
         newPieceState = {
           ...newPieceState,
+          id: `${newPieceType.toLowerCase()}-${Date.now()}`,
           piece: newPieceType,
           direction: undefined,
         };
@@ -275,7 +276,6 @@ export default function Home() {
     
     setTimeout(() => {
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-        setSelectedPiece(null);
         onComplete();
     }, 300);
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder]);
@@ -293,11 +293,12 @@ export default function Home() {
         
         const from = selectedPiece;
         
+        setSelectedPiece(null); // Deselect immediately for better feel
+        
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
           clickLock.current = false;
         });
-        setSelectedPiece(null); // Deselect immediately for better feel
       }
       return;
     }
