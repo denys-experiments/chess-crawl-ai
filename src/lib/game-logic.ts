@@ -5,6 +5,7 @@
 
 
 
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -300,6 +301,8 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
       const target = board[cny][cnx];
       if (target?.type === 'piece' && target.color !== piece.color) {
         uniqueMoves.set(`${cnx},${cny}`, { x: cnx, y: cny });
+      } else if (target?.type === 'sleeping_ally' && piece.color !== 'white') {
+        uniqueMoves.set(`${cnx},${cny}`, { x: cnx, y: cny });
       }
     }
   });
@@ -322,7 +325,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
           isObstacle = true;
       } else {
           const obstacleTile = board[obsY][obsX];
-          if (obstacleTile?.type === 'wall' || obstacleTile?.type === 'piece' || obstacleTile?.type === 'sleeping_ally') {
+          if (obstacleTile?.type === 'wall' || obstacleTile?.type === 'piece' || obstacleTile?.type === 'sleeping_ally' || obstacleTile?.type === 'chest') {
               isObstacle = true;
           }
       }
@@ -435,6 +438,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
+
 
 
 
