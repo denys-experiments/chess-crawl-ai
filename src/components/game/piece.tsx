@@ -6,9 +6,10 @@ interface PieceProps {
   piece: Piece;
   size?: 'sm' | 'lg';
   isBoardPiece?: boolean;
+  isLoading?: boolean;
 }
 
-export function GamePiece({ piece, size = 'lg', isBoardPiece = false }: PieceProps) {
+export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading = false }: PieceProps) {
   const getPieceUnicode = () => {
     const isWhite = piece.color === 'white';
     switch (piece.piece) {
@@ -111,7 +112,10 @@ export function GamePiece({ piece, size = 'lg', isBoardPiece = false }: PiecePro
   if (isBoardPiece) {
     return (
       <div 
-        className="absolute w-[var(--cell-size)] h-[var(--cell-size)] transition-all duration-300 ease-in-out pointer-events-none"
+        className={cn(
+            "absolute w-[var(--cell-size)] h-[var(--cell-size)] ease-in-out pointer-events-none",
+            !isLoading && "transition-all duration-300"
+        )}
         style={{
             top: `calc(${piece.y} * var(--cell-size))`,
             left: `calc(${piece.x} * var(--cell-size))`,

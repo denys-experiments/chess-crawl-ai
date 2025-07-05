@@ -10,9 +10,10 @@ interface GameBoardProps {
   onTileClick: (x: number, y: number) => void;
   selectedPiece: Position | null;
   availableMoves: Position[];
+  isLoading?: boolean;
 }
 
-export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }: GameBoardProps) {
+export function GameBoard({ board, onTileClick, selectedPiece, availableMoves, isLoading }: GameBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
 
@@ -109,7 +110,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
           ))
         )}
         {allPieces.map(piece => (
-            <GamePiece key={piece.id} piece={piece} isBoardPiece={true} />
+            <GamePiece key={piece.id} piece={piece} isBoardPiece={true} isLoading={isLoading} />
         ))}
       </div>
     </div>

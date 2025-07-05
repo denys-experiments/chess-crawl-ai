@@ -139,11 +139,16 @@ export default function Home() {
 
     const newPlayerPieces: Piece[] = [];
     const newEnemyPieces: Piece[] = [];
+    let pieceCounts: { [key in PieceType]?: number } = {};
+
     board.forEach((row, y) => {
       row.forEach((tile, x) => {
         if (tile?.type === 'piece') {
           if (tile.color === 'white') {
             newPlayerPieces.push(tile);
+            if (tile.piece !== 'King' && tile.piece !== 'Pawn') {
+                pieceCounts[tile.piece] = (pieceCounts[tile.piece] || 0) + 1;
+            }
           } else {
             newEnemyPieces.push(tile);
           }
@@ -280,7 +285,7 @@ export default function Home() {
         }
     }));
     const enemies = currentPieces.filter(p => p.color === factionColor);
-    const playerPieces = currentPieces.filter(p => p.color === 'white');
+    const potentialTargets = currentPieces.filter(p => p.color !== factionColor);
 
     if (enemies.length === 0) {
       setIsEnemyThinking(false);
@@ -289,7 +294,7 @@ export default function Home() {
     }
 
     const allPossibleMoves: { piece: Piece; move: Position; score: number }[] = [];
-    const playerKing = playerPieces.find(p => p.piece === 'King');
+    const playerKing = potentialTargets.find(p => p.piece === 'King' && p.color === 'white');
 
     const height = board.length;
     const width = board[0].length;
@@ -331,8 +336,8 @@ export default function Home() {
                 if (newDist < currentDist) {
                     score += 5;
                 }
-            } else if (playerPieces.length > 0) {
-                 const closestPlayer = [...playerPieces].sort((a,b) => (Math.abs(enemy.x - a.x) + Math.abs(enemy.y - a.y)) - (Math.abs(enemy.x - b.x) + Math.abs(enemy.y - b.y)))[0];
+            } else if (potentialTargets.length > 0) {
+                 const closestPlayer = [...potentialTargets].filter(p=>p.color === 'white').sort((a,b) => (Math.abs(enemy.x - a.x) + Math.abs(enemy.y - a.y)) - (Math.abs(enemy.x - b.x) + Math.abs(enemy.y - b.y)))[0];
                  if(closestPlayer) {
                      const currentDist = Math.abs(enemy.x - closestPlayer.x) + Math.abs(enemy.y - closestPlayer.y);
                      const newDist = Math.abs(move.x - closestPlayer.x) + Math.abs(move.y - closestPlayer.y);
@@ -583,6 +588,7 @@ export default function Home() {
             onTileClick={handleTileClick}
             selectedPiece={selectedPiece}
             availableMoves={availableMoves}
+            isLoading={isLoading}
           />
         </div>
         <GameHud 
