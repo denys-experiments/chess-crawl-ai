@@ -81,15 +81,10 @@ export default function Home() {
   const [isPlayerMoving, setIsPlayerMoving] = useState(false);
   const [debugLog, setDebugLog] = useState('');
   const clickLock = useRef(false);
-  const initialLoad = useRef(true);
-
-  const [activeEnemyFactions, setActiveEnemyFactions] = useState<string[]>(['black']);
-  const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
   const [turnIndex, setTurnIndex] = useState(0);
-  const currentTurn = useMemo(() => turnOrder[turnIndex % turnOrder.length], [turnOrder, turnIndex]);
-  
-  const { toast } = useToast();
 
+  const { toast } = useToast();
+  
   const appendToDebugLog = useCallback((message: string) => {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
   }, []);
@@ -98,57 +93,12 @@ export default function Home() {
     setHistory(prev => [message, ...prev]);
   }, []);
 
-  const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board, levelForRescue: number) => {
-    const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    
-    directions.forEach(([dx, dy]) => {
-      const nx = pos.x + dx;
-      const ny = pos.y + dy;
-      if (isWithinBoard(nx, ny, currentBoard)) {
-        const adjacentTile = currentBoard[ny][nx];
-        if (adjacentTile?.type === 'sleeping_ally') {
-          const newPieceType = adjacentTile.piece;
-          const newPieceName = generateRandomName();
-          currentBoard[ny][nx] = {
-            type: 'piece',
-            piece: newPieceType,
-            color: 'white',
-            x: nx,
-            y: ny,
-            id: `${nx}-${ny}-${Date.now()}`,
-            name: newPieceName,
-            discoveredOnLevel: levelForRescue,
-            captures: 0,
-          };
-          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
-          addToHistory(`A friendly ${newPieceType} (${newPieceName}) has woken up and joined your party!`);
-          // Recursive call to check for chain reactions
-          checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
-        }
-      }
-    });
-  }, [toast, addToHistory]);
-  
-  const checkForInitialRescues = useCallback((initialBoard: Board, levelForRescue: number) => {
-    const playerPiecesOnBoard: Piece[] = [];
-    initialBoard.forEach((row) => {
-        row.forEach((tile) => {
-            if (tile?.type === 'piece' && tile.color === 'white') {
-                playerPiecesOnBoard.push(tile);
-            }
-        });
-    });
-    playerPiecesOnBoard.forEach(piece => {
-        checkForAllyRescue({x: piece.x, y: piece.y}, initialBoard, levelForRescue);
-    });
-  }, [checkForAllyRescue]);
-  
   const setupLevel = useCallback((levelToSetup: number, piecesToCarry: Piece[]) => {
     setIsLoading(true);
 
     let finalPieces = piecesToCarry;
     let isNewGame = false;
-    // If it's the very first level and no pieces were provided, create the default set.
+    
     if (levelToSetup === 1 && piecesToCarry.length === 0) {
         isNewGame = true;
         finalPieces = [
@@ -160,14 +110,47 @@ export default function Home() {
     
     setLevel(levelToSetup);
     
-    const { board: newBoard, factions } = initializeBoard(levelToSetup, finalPieces);
-    checkForInitialRescues(newBoard, levelToSetup);
+    const { board: newBoard } = initializeBoard(levelToSetup, finalPieces);
+    
+    const checkForAllyRescueOnSetup = (pos: Position, currentBoard: Board) => {
+      const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+      directions.forEach(([dx, dy]) => {
+        const nx = pos.x + dx;
+        const ny = pos.y + dy;
+        if (isWithinBoard(nx, ny, currentBoard)) {
+          const adjacentTile = currentBoard[ny][nx];
+          if (adjacentTile?.type === 'sleeping_ally') {
+            const newPieceType = adjacentTile.piece;
+            const newPieceName = generateRandomName();
+            currentBoard[ny][nx] = {
+              type: 'piece',
+              piece: newPieceType,
+              color: 'white',
+              x: nx,
+              y: ny,
+              id: `${nx}-${ny}-${Date.now()}`,
+              name: newPieceName,
+              discoveredOnLevel: levelToSetup,
+              captures: 0,
+            };
+            addToHistory(`A friendly ${newPieceType} (${newPieceName}) has woken up and joined your party!`);
+            checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard);
+          }
+        }
+      });
+    };
+    
+    newBoard.forEach((row, y) => row.forEach((tile, x) => {
+        if (tile?.type === 'piece' && tile.color === 'white') {
+            checkForAllyRescueOnSetup({x, y}, newBoard);
+        }
+    }));
     
     setBoard(newBoard);
-    setActiveEnemyFactions(factions);
     setTurnIndex(0);
     setHistory([]);
     setIsLevelComplete(false);
+    setSelectedPiece(null);
 
     let log = '';
     if (isNewGame) {
@@ -184,25 +167,21 @@ export default function Home() {
     log += `Player pieces on board: ${playerPiecesOnBoard.length}\n`;
     log += JSON.stringify(playerPiecesOnBoard.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
     appendToDebugLog(log);
-
-}, [appendToDebugLog, checkForInitialRescues]);
+    
+    setIsLoading(false);
+  }, [appendToDebugLog, addToHistory]);
   
   const initialLoadSetup = useCallback(() => {
     setupLevel(1, []);
   }, [setupLevel]);
 
   useEffect(() => {
-    if (initialLoad.current) {
-      initialLoad.current = false;
+    const hasLoaded = sessionStorage.getItem('chess-crawl-loaded');
+    if (!hasLoaded) {
       initialLoadSetup();
+      sessionStorage.setItem('chess-crawl-loaded', 'true');
     }
   }, [initialLoadSetup]);
-  
-  useEffect(() => {
-    if (isLoading) {
-      setIsLoading(false);
-    }
-  }, [isLoading, board]);
 
   useEffect(() => {
     if (!board) return;
@@ -237,6 +216,50 @@ export default function Home() {
     }
   }, [board, level, isLoading]);
   
+  const activeEnemyFactions = useMemo(() => {
+    if (!board) return [];
+    const factions = new Set<string>();
+    board.forEach(row => row.forEach(tile => {
+      if (tile?.type === 'piece' && tile.color !== 'white') {
+        factions.add(tile.color);
+      }
+    }));
+    return Array.from(factions);
+  }, [board]);
+  
+  const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
+  const currentTurn = useMemo(() => turnOrder[turnIndex % turnOrder.length], [turnOrder, turnIndex]);
+  
+  const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board, levelForRescue: number) => {
+    const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    
+    directions.forEach(([dx, dy]) => {
+      const nx = pos.x + dx;
+      const ny = pos.y + dy;
+      if (isWithinBoard(nx, ny, currentBoard)) {
+        const adjacentTile = currentBoard[ny][nx];
+        if (adjacentTile?.type === 'sleeping_ally') {
+          const newPieceType = adjacentTile.piece;
+          const newPieceName = generateRandomName();
+          currentBoard[ny][nx] = {
+            type: 'piece',
+            piece: newPieceType,
+            color: 'white',
+            x: nx,
+            y: ny,
+            id: `${nx}-${ny}-${Date.now()}`,
+            name: newPieceName,
+            discoveredOnLevel: levelForRescue,
+            captures: 0,
+          };
+          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
+          addToHistory(`A friendly ${newPieceType} (${newPieceName}) has woken up and joined your party!`);
+          checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
+        }
+      }
+    });
+  }, [toast, addToHistory]);
+
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
       setAvailableMoves(getValidMoves(selectedPiece, board));
@@ -330,11 +353,11 @@ export default function Home() {
     checkForAllyRescue(to, newBoard, level);
 
     setBoard(newBoard);
+    setSelectedPiece(null);
     
     setTimeout(() => {
         setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
         onComplete();
-        setSelectedPiece(null);
     }, 300);
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder, addToHistory]);
 
@@ -349,12 +372,12 @@ export default function Home() {
         clickLock.current = true;
         
         const from = { ...selectedPiece };
+        setSelectedPiece(null);
         
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
           clickLock.current = false;
         });
-        setSelectedPiece(null);
       }
       return;
     }
@@ -538,6 +561,7 @@ export default function Home() {
     setInventory({ pieces: [], cosmetics: [] });
     setHistory([]);
     setIsGameOver(false);
+    sessionStorage.removeItem('chess-crawl-loaded');
     setupLevel(1, []);
   };
   
@@ -563,8 +587,6 @@ export default function Home() {
               name: generateRandomName(), discoveredOnLevel: level + 1, captures: 0
           });
       }
-
-      appendToDebugLog(`--- CARRY OVER TO LEVEL ${level + 1} ---`);
       
       setInventory(prev => ({...prev, pieces: finalPiecesForNextLevel}));
       setupLevel(level + 1, finalPiecesForNextLevel);
@@ -587,9 +609,7 @@ export default function Home() {
     setIsLoading(true);
     const king = playerPieces.find(p => p.piece === 'King');
     const { board: newBoard, factions } = initializeBoard(level, king ? [king] : [], { width, height, numFactions });
-    checkForInitialRescues(newBoard, level);
     setBoard(newBoard);
-    setActiveEnemyFactions(factions);
     setSelectedPiece(null);
     setAvailableMoves([]);
     setTurnIndex(0);
@@ -693,7 +713,7 @@ export default function Home() {
     }
   }
 
-  if (!board) {
+  if (isLoading || !board) {
     return (
         <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -779,11 +799,12 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                         Congratulations! Your King is automatically carried over. Select up to {maxCarryOver} additional pieces to bring to the next level.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-4 gap-4 py-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 py-4">
                     {selectablePieces.map(piece => (
-                        <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-transparent hover:border-border'}`}>
+                        <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center text-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-transparent hover:border-border'}`}>
                              <GamePiece piece={piece} size="sm" />
-                             <span className="text-xs text-muted-foreground">{piece.piece}</span>
+                             <span className="text-xs font-medium mt-1.5 leading-tight">{piece.name}</span>
+                             <span className="text-xs text-muted-foreground">({piece.piece})</span>
                         </div>
                     ))}
                 </div>
