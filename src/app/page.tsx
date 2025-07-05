@@ -81,6 +81,7 @@ export default function Home() {
   const [isPlayerMoving, setIsPlayerMoving] = useState(false);
   const [debugLog, setDebugLog] = useState('');
   const clickLock = useRef(false);
+  const initialLoad = useRef(true);
 
   const [activeEnemyFactions, setActiveEnemyFactions] = useState<string[]>(['black']);
   const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
@@ -93,7 +94,7 @@ export default function Home() {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
   }, []);
 
-  const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board) => {
+  const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board, levelForRescue: number) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
     
     directions.forEach(([dx, dy]) => {
@@ -111,18 +112,18 @@ export default function Home() {
             y: ny,
             id: `${nx}-${ny}-${Date.now()}`,
             name: generateRandomName(),
-            discoveredOnLevel: level,
+            discoveredOnLevel: levelForRescue,
             captures: 0,
           };
           toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
           // Recursive call to check for chain reactions
-          checkForAllyRescue({ x: nx, y: ny }, currentBoard);
+          checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
         }
       }
     });
-  }, [toast, level]);
+  }, [toast]);
   
-  const checkForInitialRescues = useCallback((initialBoard: Board) => {
+  const checkForInitialRescues = useCallback((initialBoard: Board, levelForRescue: number) => {
     const playerPiecesOnBoard: Piece[] = [];
     initialBoard.forEach((row) => {
         row.forEach((tile) => {
@@ -132,7 +133,7 @@ export default function Home() {
         });
     });
     playerPiecesOnBoard.forEach(piece => {
-        checkForAllyRescue({x: piece.x, y: piece.y}, initialBoard);
+        checkForAllyRescue({x: piece.x, y: piece.y}, initialBoard, levelForRescue);
     });
   }, [checkForAllyRescue]);
   
@@ -154,14 +155,13 @@ export default function Home() {
     setLevel(levelToSetup);
     
     const { board: newBoard, factions } = initializeBoard(levelToSetup, finalPieces);
-    checkForInitialRescues(newBoard);
+    checkForInitialRescues(newBoard, levelToSetup);
     
     setBoard(newBoard);
     setActiveEnemyFactions(factions);
     setTurnIndex(0);
     setIsLevelComplete(false);
 
-    // Logging logic moved here for consistency.
     let log = '';
     if (isNewGame) {
         log = `--- STARTING NEW GAME (LEVEL 1) ---\n`;
@@ -181,7 +181,10 @@ export default function Home() {
 }, [appendToDebugLog, checkForInitialRescues]);
   
   useEffect(() => {
-    setupLevel(1, []);
+    if (initialLoad.current) {
+      initialLoad.current = false;
+      setupLevel(1, []);
+    }
   }, [setupLevel]);
   
   useEffect(() => {
@@ -221,7 +224,7 @@ export default function Home() {
         setIsGameOver(true);
       }
     }
-  }, [board, level, isLoading, appendToDebugLog]);
+  }, [board, level, isLoading]);
   
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
@@ -305,7 +308,7 @@ export default function Home() {
     newBoard[to.y][to.x] = newPieceState;
     newBoard[from.y][from.x] = null;
     
-    checkForAllyRescue(to, newBoard);
+    checkForAllyRescue(to, newBoard, level);
 
     setBoard(newBoard);
     
@@ -327,7 +330,8 @@ export default function Home() {
         clickLock.current = true;
         
         const from = { ...selectedPiece };
-        
+        setSelectedPiece(null);
+
         movePiece(from, { x, y }, () => {
           setIsPlayerMoving(false);
           clickLock.current = false;
@@ -549,7 +553,7 @@ export default function Home() {
       let log = `--- CARRY OVER TO LEVEL ${level + 1} ---\n`;
       log += `Selected pieces in dialog: ${piecesToCarry.length}\n`;
       log += JSON.stringify(piecesToCarry.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
-      log += `\n\nFinal pieces for next level: ${finalPiecesForNextLevel.length}\n`;
+      log += `\nFinal pieces for next level (including King): ${finalPiecesForNextLevel.length}\n`;
       log += JSON.stringify(finalPiecesForNextLevel.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel })), null, 2);
       appendToDebugLog(log);
       
@@ -574,7 +578,7 @@ export default function Home() {
     setIsLoading(true);
     const king = playerPieces.find(p => p.piece === 'King');
     const { board: newBoard, factions } = initializeBoard(level, king ? [king] : [], { width, height, numFactions });
-    checkForInitialRescues(newBoard);
+    checkForInitialRescues(newBoard, level);
     setBoard(newBoard);
     setActiveEnemyFactions(factions);
     setSelectedPiece(null);
@@ -801,3 +805,5 @@ function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () 
     </Dialog>
   );
 }
+
+    
