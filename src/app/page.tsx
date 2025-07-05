@@ -144,10 +144,11 @@ export default function Home() {
             (piece.direction === 'left' && to.x < from.x) ||
             (piece.direction === 'right' && to.x > from.x);
 
-        const isEmptySquareMove = !targetTile;
+        const canLandOn = !targetTile || targetTile.type === 'chest';
+        const isDirectionChangeMove = isOrthogonalMove && !isForwardMove && canLandOn;
 
-        // A direction change happens on a non-forward, orthogonal move to an empty square.
-        if (isOrthogonalMove && !isForwardMove && isEmptySquareMove) {
+        // A direction change happens on a non-forward, orthogonal move to an empty square or a chest.
+        if (isDirectionChangeMove) {
              if (to.x > from.x) {
                 newPieceState.direction = 'right';
             } else if (to.x < from.x) {
@@ -299,11 +300,11 @@ export default function Home() {
             (piece.direction === 'down' && move.y > from.y) ||
             (piece.direction === 'left' && move.x < from.x) ||
             (piece.direction === 'right' && move.x > from.x);
+        
+        const canLandOn = !targetTile || targetTile.type === 'chest';
+        const isDirectionChangeMove = isOrthogonalMove && !isForwardMove && canLandOn;
 
-        const isEmptySquareMove = !targetTile;
-
-        // A direction change happens on a non-forward, orthogonal move to an empty square.
-        if (isOrthogonalMove && !isForwardMove && isEmptySquareMove) {
+        if (isDirectionChangeMove) {
             if (move.x > from.x) {
                 newPieceState.direction = 'right';
             } else if (move.x < from.x) {
