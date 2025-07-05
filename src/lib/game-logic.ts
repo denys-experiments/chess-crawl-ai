@@ -1,6 +1,7 @@
 
 
 
+
 import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 
@@ -278,26 +279,30 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   // 1. Check forward move
   if (isWithinBoard(nx, ny, board)) {
     const target = board[ny][nx];
+    // A pawn can move forward if the square is empty or contains a chest.
     if (!target || target.type === 'chest') {
       moves.push({ x: nx, y: ny });
     } else {
+      // The square is blocked by a wall or another piece.
       isForwardBlocked = true;
     }
   } else {
-    // Forward move is off the board
+    // Forward move is off the board.
     isForwardBlocked = true;
   }
 
-  // 2. If forward is blocked, allow movement to any other open adjacent square.
+  // 2. If forward is blocked, allow movement to other open adjacent squares (bounce).
   if (isForwardBlocked) {
     const allDirections: ('up' | 'down' | 'left' | 'right')[] = ['up', 'down', 'left', 'right'];
 
     allDirections.forEach(sideStepDir => {
-      if (sideStepDir === direction) return; // Can't move forward, we already established that.
+      // A bounce move cannot be in the forward direction.
+      if (sideStepDir === direction) return;
 
       const sideStepVector = vectors[sideStepDir];
       const snx = x + sideStepVector.x;
       const sny = y + sideStepVector.y;
+      
       if (isWithinBoard(snx, sny, board)) {
         const sideStepTarget = board[sny][snx];
         if (!sideStepTarget || sideStepTarget.type === 'chest') {
@@ -307,7 +312,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     });
   }
 
-  // 3. Diagonal capture
+  // 3. Diagonal capture (can happen regardless of being blocked)
   const captureDirections = {
     'up':    [{ dx: -1, dy: -1 }, { dx: 1, dy: -1 }],
     'down':  [{ dx: -1, dy: 1 }, { dx: 1, dy: 1 }],
@@ -420,4 +425,5 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
 
   return moves;
 }
+
 
