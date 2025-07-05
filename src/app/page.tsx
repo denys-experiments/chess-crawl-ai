@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Piece, Board, Position, PieceType } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
@@ -164,7 +164,7 @@ export default function Home() {
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
-    const pieceToMove = JSON.parse(JSON.stringify(newBoard[from.y][from.x])) as Piece;
+    const pieceToMove = JSON.parse(JSON.stringify(newBoard[from.y][from.x] as Piece));
     const targetTile = newBoard[to.y][to.x];
 
     let newPieceState: Piece = {
@@ -193,7 +193,7 @@ export default function Home() {
         }
     }
 
-    if (targetTile?.type === 'chest' || (targetTile?.type === 'chest' && isOrthogonalMove)) {
+    if (targetTile?.type === 'chest' || (targetTile?.type === 'chest' && isOrthogonalMove(from, to))) {
       if (pieceToMove.piece === 'Pawn') {
         const newPieceType = getPromotionPiece(level, playerPieces);
         newPieceState = {
@@ -234,12 +234,19 @@ export default function Home() {
     setTurn('enemy');
   };
 
+  function isOrthogonalMove(from: Position, to: Position) {
+    return from.x === to.x || from.y === to.y;
+  }
+
   const checkForAllyRescue = (pos: Position, currentBoard: Board) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    const height = currentBoard.length;
+    const width = currentBoard[0]?.length || 0;
+    
     directions.forEach(([dx, dy]) => {
       const nx = pos.x + dx;
       const ny = pos.y + dy;
-      if (nx >= 0 && nx < 8 && ny >= 0 && ny < 8) {
+      if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
         const adjacentTile = currentBoard[ny][nx];
         if (adjacentTile?.type === 'sleeping_ally') {
           const newPieceType = adjacentTile.piece;
@@ -274,6 +281,11 @@ export default function Home() {
 
     const allPossibleMoves: { piece: Piece; move: Position; score: number }[] = [];
     const playerKing = playerPieces.find(p => p.piece === 'King');
+
+    const height = board.length;
+    const width = board[0].length;
+    const widthCenter = (width - 1) / 2;
+    const heightCenter = (height - 1) / 2;
 
     for (const enemy of enemies) {
         const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
@@ -314,8 +326,9 @@ export default function Home() {
                  }
             }
             
-            const centrality = (4 - Math.abs(move.x - 3.5)) + (4 - Math.abs(move.y - 3.5));
-            score += centrality / 4; 
+            const centralityX = (width / 2) - Math.abs(move.x - widthCenter);
+            const centralityY = (height / 2) - Math.abs(move.y - heightCenter);
+            score += (centralityX + centralityY) / 4; 
 
             if (enemy.piece === 'King') {
                 score -= 5;
@@ -348,7 +361,7 @@ export default function Home() {
     newPieceState.y = move.y;
     
     if (pieceToMove.piece === 'Pawn') {
-        const isOrthogonalMove = from.x === move.x || from.y === move.y;
+        const isOrthogonal = from.x === move.x || from.y === move.y;
         const currentDirection = pieceToMove.direction || (pieceToMove.color === 'white' ? 'up' : 'down');
         const forwardVector = { 'up': {y: -1}, 'down': {y: 1}, 'left': {x: -1}, 'right': {x: 1} }[currentDirection] as {x?: number, y?: number};
         
@@ -356,7 +369,7 @@ export default function Home() {
             (forwardVector.y !== undefined && move.y === from.y + forwardVector.y && from.x === move.x) || 
             (forwardVector.x !== undefined && move.x === from.x + forwardVector.x && from.y === move.y);
         
-        if (isOrthogonalMove && !isStandardForwardMove) {
+        if (isOrthogonal && !isStandardForwardMove) {
             let newDirection = pieceToMove.direction;
             if (move.x > from.x) newDirection = 'right';
             else if (move.x < from.x) newDirection = 'left';
@@ -371,7 +384,7 @@ export default function Home() {
     
     setBoard(newBoard);
 
-    let reasoning = `Enemy ${pieceToMove.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`;
+    let reasoning = `Enemy ${pieceToMove.piece} moves to column ${move.x + 1}, row ${move.y + 1}.`;
     if (targetTile?.type === 'piece') {
         reasoning += ` Capturing a ${targetTile.piece}.`;
     }

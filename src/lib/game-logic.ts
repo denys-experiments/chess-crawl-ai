@@ -3,7 +3,7 @@ import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 
 function getRandomAllyPiece(level: number): PieceType {
   const pieceWeights: { piece: PieceType; weight: number; minLevel: number }[] = [
-    { piece: 'Pawn', weight: 5, minLevel: 1 },
+    { piece: 'Pawn', weight: 8, minLevel: 1 },
     { piece: 'Knight', weight: 4, minLevel: 1 },
     { piece: 'Bishop', weight: 3, minLevel: 2 },
     { piece: 'Rook', weight: 2, minLevel: 4 },
@@ -13,7 +13,7 @@ function getRandomAllyPiece(level: number): PieceType {
   const availablePieces = pieceWeights.filter(p => level >= p.minLevel);
 
   if (availablePieces.length === 0) {
-    return 'Pawn'; // Should not happen with minLevel 1 pieces
+    return 'Pawn';
   }
 
   const totalWeight = availablePieces.reduce((sum, p) => sum + p.weight, 0);
@@ -26,7 +26,7 @@ function getRandomAllyPiece(level: number): PieceType {
     random -= piece.weight;
   }
   
-  return availablePieces[availablePieces.length - 1].piece; // Fallback
+  return availablePieces[availablePieces.length - 1].piece;
 }
 
 function shuffle<T>(array: T[]): T[] {
@@ -40,52 +40,61 @@ function shuffle<T>(array: T[]): T[] {
   return array;
 }
 
-
 export function initializeBoard(level: number, carryOverPieces: Piece[] = []): Board {
-  const board: Board = Array(8).fill(null).map(() => Array(8).fill(null));
+  const width = Math.min(14, 8 + Math.floor(level / 3) + (level > 2 ? Math.floor(Math.random() * 3) - 1 : 0));
+  const height = Math.min(14, 8 + Math.floor(level / 4) + (level > 4 ? Math.floor(Math.random() * 3) - 1 : 0));
+  
+  const board: Board = Array(height).fill(null).map(() => Array(width).fill(null));
+
+  const kingX = Math.floor(width / 2);
+  const kingY = height - 1;
 
   const carriedOverKing = carryOverPieces.find(p => p.piece === 'King');
   if (carriedOverKing) {
-    board[7][4] = { ...carriedOverKing, x: 4, y: 7 };
+    board[kingY][kingX] = { ...carriedOverKing, x: kingX, y: kingY };
   } else {
-    board[7][4] = { type: 'piece', piece: 'King', color: 'white', x: 4, y: 7, id: `wk-${Date.now()}` };
+    board[kingY][kingX] = { type: 'piece', piece: 'King', color: 'white', x: kingX, y: kingY, id: `wk-${Date.now()}` };
   }
 
   const otherCarryOverPieces = carryOverPieces.filter(p => p.piece !== 'King');
   let placedCount = 0;
-  const startPositions = [[7,3], [7,5], [6,4], [6,3], [6,5]];
+  const startPositions = [
+    [kingY, kingX - 1], [kingY, kingX + 1], 
+    [kingY - 1, kingX], [kingY - 1, kingX - 1], [kingY - 1, kingX + 1]
+  ];
+
   otherCarryOverPieces.forEach((piece, index) => {
     if(index < startPositions.length) {
       const [y, x] = startPositions[index];
-      if (!board[y][x]) {
+      if (x >= 0 && x < width && y >= 0 && y < height && !board[y][x]) {
         board[y][x] = {...piece, x, y};
         placedCount++;
       }
     }
   });
 
-
   if (placedCount === 0 && level === 1) {
-    board[6][3] = { type: 'piece', piece: 'Pawn', color: 'white', x: 3, y: 6, id: `wp1-${Date.now()}`, direction: 'up' };
-    board[6][4] = { type: 'piece', piece: 'Pawn', color: 'white', x: 4, y: 6, id: `wp2-${Date.now()}`, direction: 'up' };
+    if(kingX-1 >= 0 && kingY-1 >= 0) board[kingY-1][kingX-1] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX-1, y: kingY-1, id: `wp1-${Date.now()}`, direction: 'up' };
+    if(kingY-1 >= 0) board[kingY-1][kingX] = { type: 'piece', piece: 'Pawn', color: 'white', x: kingX, y: kingY-1, id: `wp2-${Date.now()}`, direction: 'up' };
   }
 
-
-  board[0][4] = { type: 'piece', piece: 'King', color: 'black', x: 4, y: 0, id: `bk-${Date.now()}` };
-  board[1][3] = { type: 'piece', piece: 'Pawn', color: 'black', x: 3, y: 1, id: `bp1-${Date.now()}`, direction: 'down'};
-  if (level > 1) {
-    board[1][5] = { type: 'piece', piece: 'Pawn', color: 'black', x: 5, y: 1, id: `bp2-${Date.now()}`, direction: 'down'};
+  const enemyKingX = Math.floor(width / 2);
+  board[0][enemyKingX] = { type: 'piece', piece: 'King', color: 'black', x: enemyKingX, y: 0, id: `bk-${Date.now()}` };
+  
+  if (enemyKingX - 1 >= 0) board[1][enemyKingX-1] = { type: 'piece', piece: 'Pawn', color: 'black', x: enemyKingX - 1, y: 1, id: `bp1-${Date.now()}`, direction: 'down'};
+  if (level > 1 && enemyKingX + 1 < width) {
+    board[1][enemyKingX+1] = { type: 'piece', piece: 'Pawn', color: 'black', x: enemyKingX + 1, y: 1, id: `bp2-${Date.now()}`, direction: 'down'};
   }
-  if (level > 2) {
-    board[0][3] = { type: 'piece', piece: 'Knight', color: 'black', x: 3, y: 0, id: `bn1-${Date.now()}`};
+  if (level > 2 && enemyKingX - 1 >= 0) {
+    board[0][enemyKingX-1] = { type: 'piece', piece: 'Knight', color: 'black', x: enemyKingX - 1, y: 0, id: `bn1-${Date.now()}`};
   }
-   if (level > 3) {
-    board[0][5] = { type: 'piece', piece: 'Knight', color: 'black', x: 5, y: 0, id: `bn2-${Date.now()}`};
+   if (level > 3 && enemyKingX + 1 < width) {
+    board[0][enemyKingX+1] = { type: 'piece', piece: 'Knight', color: 'black', x: enemyKingX + 1, y: 0, id: `bn2-${Date.now()}`};
   }
 
   const emptySquares: Position[] = [];
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       if (!board[y][x]) {
         emptySquares.push({ x, y });
       }
@@ -93,8 +102,9 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   }
 
   shuffle(emptySquares);
-
-  const numWalls = Math.min(emptySquares.length, Math.max(0, 4 + Math.floor(Math.random() * 3 - 1)));
+  
+  const numSquares = width * height;
+  const numWalls = Math.min(emptySquares.length, Math.max(0, Math.floor(numSquares / 16) + Math.floor(Math.random() * 3 - 1)));
   const numChests = Math.min(emptySquares.length - numWalls, Math.max(0, 1 + Math.floor(level / 3) + Math.floor(Math.random()*2)));
   const numAllies = Math.min(emptySquares.length - numWalls - numChests, Math.max(0, 1 + Math.floor(level / 2)));
 
@@ -119,8 +129,11 @@ export function initializeBoard(level: number, carryOverPieces: Piece[] = []): B
   return board;
 }
 
-function isWithinBoard(x: number, y: number): boolean {
-  return x >= 0 && x < 8 && y >= 0 && y < 8;
+function isWithinBoard(x: number, y: number, board: Board): boolean {
+  const height = board.length;
+  if (height === 0) return false;
+  const width = board[0].length;
+  return x >= 0 && x < width && y >= 0 && y < height;
 }
 
 export function getValidMoves(pos: Position, board: Board): Position[] {
@@ -159,7 +172,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   }[direction];
 
   const forwardPos = { x: x + forward.x, y: y + forward.y };
-  if (isWithinBoard(forwardPos.x, forwardPos.y)) {
+  if (isWithinBoard(forwardPos.x, forwardPos.y, board)) {
     const target = board[forwardPos.y][forwardPos.x];
     if (!target || target.type === 'chest') {
       moves.push(forwardPos);
@@ -175,7 +188,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
 
   captureDiagonals.forEach(diag => {
     const capturePos = { x: x + diag.x, y: y + diag.y };
-    if (isWithinBoard(capturePos.x, capturePos.y)) {
+    if (isWithinBoard(capturePos.x, capturePos.y, board)) {
       const target = board[capturePos.y][capturePos.x];
       if (target?.type === 'piece' && target.color !== piece.color) {
         moves.push(capturePos);
@@ -194,7 +207,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
     const obstaclePos = { x: x + adj.offset.x, y: y + adj.offset.y };
     let isBlocked = false;
 
-    if (!isWithinBoard(obstaclePos.x, obstaclePos.y)) {
+    if (!isWithinBoard(obstaclePos.x, obstaclePos.y, board)) {
       isBlocked = true;
     } else {
       const obstacle = board[obstaclePos.y][obstaclePos.x];
@@ -205,7 +218,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
 
     if (isBlocked) {
       const movePos = { x: x - adj.offset.x, y: y - adj.offset.y };
-      if (isWithinBoard(movePos.x, movePos.y)) {
+      if (isWithinBoard(movePos.x, movePos.y, board)) {
         const targetTile = board[movePos.y][movePos.x];
         if (!targetTile || targetTile.type === 'chest') {
           if (!moves.some(m => m.x === movePos.x && m.y === movePos.y)) {
@@ -230,7 +243,7 @@ function getKnightMoves(pos: Position, piece: Piece, board: Board): Position[] {
     offsets.forEach(([dx, dy]) => {
         const newX = x + dx;
         const newY = y + dy;
-        if(isWithinBoard(newX, newY)) {
+        if(isWithinBoard(newX, newY, board)) {
             const target = board[newY][newX];
             if (!target) {
                 moves.push({x: newX, y: newY});
@@ -259,7 +272,7 @@ function getKingMoves(pos: Position, piece: Piece, board: Board): Position[] {
     offsets.forEach(([dx, dy]) => {
         const newX = x + dx;
         const newY = y + dy;
-        if(isWithinBoard(newX, newY)) {
+        if(isWithinBoard(newX, newY, board)) {
             const target = board[newY][newX];
              if (!target) {
                 moves.push({x: newX, y: newY});
@@ -277,7 +290,6 @@ function getKingMoves(pos: Position, piece: Piece, board: Board): Position[] {
     return moves;
 }
 
-
 function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: number[][]): Position[] {
   const moves: Position[] = [];
   const { x, y } = pos;
@@ -286,7 +298,7 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
     let currentX = x + dx;
     let currentY = y + dy;
 
-    while (isWithinBoard(currentX, currentY)) {
+    while (isWithinBoard(currentX, currentY, board)) {
       const target = board[currentY][currentX];
       if (target) {
         if (target.type === 'wall' || target.type === 'sleeping_ally') {
@@ -310,54 +322,4 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
   });
 
   return moves;
-}
-
-export function calculateSimpleEnemyMove(enemy: Piece, board: Board, playerPieces: Piece[]): Position | null {
-  const availableMoves = getValidMoves({ x: enemy.x, y: enemy.y }, board);
-  if (availableMoves.length === 0) return null;
-
-  const validMoves = availableMoves.filter(move => {
-    const targetTile = board[move.y][move.x];
-    return targetTile?.type !== 'chest' && targetTile?.type !== 'sleeping_ally';
-  });
-
-  if (validMoves.length === 0) return null;
-
-  const captureMoves = validMoves.filter(move => {
-    const targetTile = board[move.y][move.x];
-    return targetTile?.type === 'piece' && targetTile.color === 'white';
-  });
-
-  if (captureMoves.length > 0) {
-    return captureMoves[0];
-  }
-
-  if (playerPieces.length > 0) {
-    let closestPlayerPiece: Piece | null = null;
-    let minDistanceToPlayer = Infinity;
-
-    for (const playerPiece of playerPieces) {
-      const distance = Math.abs(playerPiece.x - enemy.x) + Math.abs(playerPiece.y - enemy.y);
-      if (distance < minDistanceToPlayer) {
-        minDistanceToPlayer = distance;
-        closestPlayerPiece = playerPiece;
-      }
-    }
-    
-    if (closestPlayerPiece) {
-        let bestMove: Position | null = null;
-        let minDistanceToClosestPlayer = Infinity;
-        
-        for (const move of validMoves) {
-            const distance = Math.abs(move.x - closestPlayerPiece.x) + Math.abs(move.y - closestPlayerPiece.y);
-            if (distance < minDistanceToClosestPlayer) {
-                minDistanceToClosestPlayer = distance;
-                bestMove = move;
-            }
-        }
-        if (bestMove) return bestMove;
-    }
-  }
-
-  return validMoves[Math.floor(Math.random() * validMoves.length)];
 }
