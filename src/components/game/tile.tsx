@@ -28,9 +28,9 @@ export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: T
           </div>
         );
       case 'chest':
-        return <Box className="w-10 h-10 text-yellow-500" />;
+        return <Box className="w-8 h-8 text-yellow-500" />;
       case 'sleeping_ally':
-        return <User className="w-10 h-10 text-blue-300 opacity-60" />;
+        return <User className="w-8 h-8 text-blue-300 opacity-60" />;
       default:
         return null;
     }

@@ -59,7 +59,7 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves }:
   
   const height = board.length;
   const width = board[0].length;
-  const cellSizeRem = 5;
+  const cellSizeRem = 2.5;
   const isLargeBoard = (width * height) > 72;
 
   return (

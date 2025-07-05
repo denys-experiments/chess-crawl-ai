@@ -37,7 +37,7 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
 
     let emoji = '';
     let classes = 'absolute';
-    const sizeClass = size === 'lg' ? 'text-2xl md:text-3xl' : 'text-xl';
+    const sizeClass = size === 'lg' ? 'text-lg' : 'text-base';
 
     switch (piece.cosmetic) {
         case 'sunglasses':
@@ -80,7 +80,7 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
       <span
         className={cn(
           'drop-shadow-lg transition-transform duration-300',
-          size === 'lg' ? 'text-6xl md:text-7xl' : 'text-4xl',
+          size === 'lg' ? 'text-4xl' : 'text-3xl',
           {
             'text-foreground': piece.color === 'white',
             'text-red-400': piece.color === 'black',
