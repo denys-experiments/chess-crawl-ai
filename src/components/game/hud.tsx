@@ -104,9 +104,17 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
   onAwardCosmetic: () => void;
   onWinLevel: () => void;
 }) {
-  const [width, setWidth] = useState(8);
-  const [height, setHeight] = useState(8);
+  const [width, setWidth] = useState('8');
+  const [height, setHeight] = useState('8');
   const [pieceType, setPieceType] = useState<PieceType>('Knight');
+
+  const handleRegenerate = () => {
+    const parsedWidth = parseInt(width, 10);
+    const parsedHeight = parseInt(height, 10);
+    const finalWidth = !isNaN(parsedWidth) && parsedWidth >= 5 ? parsedWidth : 8;
+    const finalHeight = !isNaN(parsedHeight) && parsedHeight >= 5 ? parsedHeight : 8;
+    onRegenerateLevel(finalWidth, finalHeight);
+  };
 
   return (
     <div className="space-y-4">
@@ -114,10 +122,10 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
       <div className="space-y-2">
         <Label htmlFor="width-input">Regenerate Level</Label>
         <div className="flex gap-2 items-center">
-          <Input id="width-input" type="number" value={width} onChange={e => setWidth(Math.max(5, parseInt(e.target.value)) || 8)} className="w-16" />
+          <Input id="width-input" type="number" value={width} onChange={e => setWidth(e.target.value)} className="w-16" />
           <span className="text-muted-foreground">x</span>
-          <Input type="number" value={height} onChange={e => setHeight(Math.max(5, parseInt(e.target.value)) || 8)} className="w-16" />
-          <Button onClick={() => onRegenerateLevel(width, height)} size="sm">Go</Button>
+          <Input type="number" value={height} onChange={e => setHeight(e.target.value)} className="w-16" />
+          <Button onClick={handleRegenerate} size="sm">Go</Button>
         </div>
       </div>
       <div className="space-y-2">
