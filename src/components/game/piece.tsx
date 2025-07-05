@@ -20,18 +20,30 @@ export function GamePiece({ piece, size = 'lg' }: PieceProps) {
     }
   };
 
+  const getRotationClass = () => {
+    if (piece.piece !== 'Pawn' || !piece.direction) return '';
+    switch (piece.direction) {
+        case 'up': return 'rotate-0';
+        case 'right': return 'rotate-90';
+        case 'down': return 'rotate-180';
+        case 'left': return '-rotate-90';
+        default: return '';
+    }
+  };
+
   const hasSunglasses = piece.cosmetics?.includes('sunglasses');
 
   return (
     <div className="relative flex items-center justify-center">
       <span
         className={cn(
-          'drop-shadow-lg',
+          'drop-shadow-lg transition-transform duration-300',
           size === 'lg' ? 'text-6xl md:text-7xl' : 'text-4xl',
           {
             'text-foreground': piece.color === 'white',
             'text-red-400': piece.color === 'black',
-          }
+          },
+          getRotationClass()
         )}
         style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
       >

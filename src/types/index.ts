@@ -9,6 +9,7 @@ export interface Piece {
   x: number;
   y: number;
   cosmetics?: string[];
+  direction?: 'up' | 'down' | 'left' | 'right';
 }
 
 export interface Wall {

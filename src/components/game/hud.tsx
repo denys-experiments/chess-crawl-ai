@@ -9,10 +9,10 @@ interface GameHudProps {
   level: number;
   inventory: { pieces: Piece[], cosmetics: string[] };
   aiReasoning: string;
-  isLoading: boolean;
+  isEnemyThinking: boolean;
 }
 
-export function GameHud({ turn, level, inventory, aiReasoning, isLoading }: GameHudProps) {
+export function GameHud({ turn, level, inventory, aiReasoning, isEnemyThinking }: GameHudProps) {
   return (
     <Card className="w-full md:w-96 md:max-w-sm flex-shrink-0 bg-card/50 backdrop-blur-sm border-primary/30">
       <CardHeader>
@@ -21,7 +21,7 @@ export function GameHud({ turn, level, inventory, aiReasoning, isLoading }: Game
           <Badge variant="secondary" className="text-lg">Level {level}</Badge>
         </div>
         <CardDescription className="flex items-center gap-2 pt-2">
-            {isLoading ? (
+            {isEnemyThinking ? (
                 <>
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Enemy is thinking...</span>

@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { GamePiece } from '@/components/game/piece';
 import { Loader2 } from 'lucide-react';
+import { Toaster } from '@/components/ui/toaster';
 
 export default function Home() {
   const [level, setLevel] = useState(1);
@@ -31,15 +32,14 @@ export default function Home() {
   const [isLevelComplete, setIsLevelComplete] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEnemyThinking, setIsEnemyThinking] = useState(false);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    // Initialize board on the client side only to prevent hydration errors
     setBoard(initializeBoard(1));
     setIsLoading(false);
   }, []);
-
 
   useEffect(() => {
     if (!board) return;
@@ -70,7 +70,7 @@ export default function Home() {
   }, [board, level, isLoading]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
-    if (!board || turn !== 'player' || isLoading || isLevelComplete || isGameOver) return;
+    if (!board || turn !== 'player' || isEnemyThinking || isLevelComplete || isGameOver) return;
 
     const clickedTile = board[y][x];
 
@@ -96,7 +96,7 @@ export default function Home() {
       setSelectedPiece({ x, y });
       setAvailableMoves(getValidMoves({ x, y }, board));
     }
-  }, [turn, isLoading, selectedPiece, availableMoves, board, isLevelComplete, isGameOver]);
+  }, [turn, isEnemyThinking, selectedPiece, availableMoves, board, isLevelComplete, isGameOver, getValidMoves]);
 
   const movePiece = (from: Position, to: Position) => {
     if (!board) return;
@@ -104,6 +104,18 @@ export default function Home() {
     const piece = newBoard[from.y][from.x] as Piece;
     
     let pieceToMove = {...piece};
+
+    if (pieceToMove.piece === 'Pawn') {
+      if (to.x > from.x) {
+        pieceToMove.direction = 'right';
+      } else if (to.x < from.x) {
+        pieceToMove.direction = 'left';
+      } else if (to.y > from.y) {
+        pieceToMove.direction = 'down';
+      } else if (to.y < from.y) {
+        pieceToMove.direction = 'up';
+      }
+    }
 
     const targetTile = newBoard[to.y][to.x];
     if (targetTile) {
@@ -143,7 +155,7 @@ export default function Home() {
   
   const runEnemyTurn = useCallback(async () => {
     if (!board) return;
-    setIsLoading(true);
+    setIsEnemyThinking(true);
     setAiReasoning('');
 
     await new Promise(res => setTimeout(res, 500));
@@ -156,58 +168,64 @@ export default function Home() {
     }));
 
     if (enemies.length === 0) {
-      setIsLoading(false);
+      setIsEnemyThinking(false);
       setTurn('player');
       return;
     }
 
-    const allPossibleMoves: { piece: Piece; move: Position }[] = [];
-    enemies.forEach(enemy => {
-        const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
-        moves.forEach(move => {
-            allPossibleMoves.push({ piece: enemy, move });
-        });
-    });
-    
-    const validEnemyMoves = allPossibleMoves.filter(({ move }) => board[move.y][move.x]?.type !== 'chest');
-
-    if (validEnemyMoves.length === 0) {
-        setAiReasoning('Enemy has no available moves.');
-        setIsLoading(false);
-        setTurn('player');
-        return;
-    }
-
     let bestMove: { piece: Piece, move: Position } | null = null;
-    let highestValue = 0;
+    let highestValue = -1;
 
-    for (const { piece, move } of validEnemyMoves) {
-        const targetTile = board[move.y][move.x];
-        let moveValue = 0;
+    for (const enemy of enemies) {
+        const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
+        const validEnemyMoves = moves.filter(move => {
+            const targetTile = board[move.y][move.x];
+            return targetTile?.type !== 'chest' && targetTile?.type !== 'sleeping_ally';
+        });
 
-        if (targetTile?.type === 'piece' && targetTile.color === 'white') {
-            switch (targetTile.piece) {
-                case 'Queen': moveValue = 9; break;
-                case 'Rook': moveValue = 5; break;
-                case 'Bishop': moveValue = 3; break;
-                case 'Knight': moveValue = 3; break;
-                case 'Pawn': moveValue = 1; break;
-                case 'King': moveValue = 100; break;
+        for (const move of validEnemyMoves) {
+            const targetTile = board[move.y][move.x];
+            let moveValue = 0;
+
+            if (targetTile?.type === 'piece' && targetTile.color === 'white') {
+                switch (targetTile.piece) {
+                    case 'Queen': moveValue = 9; break;
+                    case 'Rook': moveValue = 5; break;
+                    case 'Bishop': moveValue = 3; break;
+                    case 'Knight': moveValue = 3; break;
+                    case 'Pawn': moveValue = 1; break;
+                    case 'King': moveValue = 100; break;
+                }
+            }
+
+            if (moveValue > highestValue) {
+                highestValue = moveValue;
+                bestMove = { piece: enemy, move };
             }
         }
+    }
 
-        if (moveValue > highestValue) {
-            highestValue = moveValue;
-            bestMove = { piece, move };
+    if (!bestMove) {
+        const allPossibleMoves: { piece: Piece; move: Position }[] = [];
+        enemies.forEach(enemy => {
+            const moves = getValidMoves({x: enemy.x, y: enemy.y}, board);
+            const validEnemyMoves = moves.filter(move => {
+                const targetTile = board[move.y][move.x];
+                return targetTile?.type !== 'chest' && targetTile?.type !== 'sleeping_ally';
+            });
+            validEnemyMoves.forEach(move => {
+                allPossibleMoves.push({ piece: enemy, move });
+            });
+        });
+        
+        if (allPossibleMoves.length > 0) {
+            bestMove = allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
         }
     }
-
+    
     if (!bestMove) {
-        bestMove = validEnemyMoves[Math.floor(Math.random() * validEnemyMoves.length)];
-    }
-
-    if (!bestMove) {
-        setIsLoading(false);
+        setAiReasoning('Enemy has no available moves.');
+        setIsEnemyThinking(false);
         setTurn('player');
         return;
     }
@@ -216,7 +234,19 @@ export default function Home() {
     const from = { x: piece.x, y: piece.y };
 
     const newBoard = board.map(row => row.slice());
-    const pieceToMove = newBoard[from.y][from.x] as Piece;
+    let pieceToMove = newBoard[from.y][from.x] as Piece;
+    
+    if (pieceToMove.piece === 'Pawn') {
+      if (move.x > from.x) {
+        pieceToMove.direction = 'right';
+      } else if (move.x < from.x) {
+        pieceToMove.direction = 'left';
+      } else if (move.y > from.y) {
+        pieceToMove.direction = 'down';
+      } else if (move.y < from.y) {
+        pieceToMove.direction = 'up';
+      }
+    }
 
     newBoard[move.y][move.x] = { ...pieceToMove, x: move.x, y: move.y };
     newBoard[from.y][from.x] = null;
@@ -224,16 +254,16 @@ export default function Home() {
     setBoard(newBoard);
     setAiReasoning(`Enemy ${piece.piece} moves to ${String.fromCharCode(97 + move.x)}${8 - move.y}.`);
     
-    setIsLoading(false);
+    setIsEnemyThinking(false);
     setTurn('player');
-  }, [board]);
+  }, [board, getValidMoves]);
 
 
   useEffect(() => {
-    if (turn === 'enemy' && !isLoading && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
+    if (turn === 'enemy' && !isEnemyThinking && enemyPieces.length > 0 && !isGameOver && !isLevelComplete) {
       runEnemyTurn();
     }
-  }, [turn, isLoading, enemyPieces, runEnemyTurn, isGameOver, isLevelComplete]);
+  }, [turn, isEnemyThinking, enemyPieces.length, runEnemyTurn, isGameOver, isLevelComplete]);
   
   const startNextLevel = (piecesToCarry: Piece[]) => {
     setIsLoading(true);
@@ -251,14 +281,16 @@ export default function Home() {
         });
     });
 
-    playerPiecesOnNewBoard.forEach(piece => {
-        checkForAllyRescue({x: piece.x, y: piece.y}, newBoard);
-    });
-
-    setBoard(newBoard);
-    setIsLevelComplete(false);
-    setTurn('player');
-    setIsLoading(false);
+    setTimeout(() => {
+        const finalBoard = [...newBoard];
+        playerPiecesOnNewBoard.forEach(piece => {
+            checkForAllyRescue({x: piece.x, y: piece.y}, finalBoard);
+        });
+        setBoard(finalBoard);
+        setIsLevelComplete(false);
+        setTurn('player');
+        setIsLoading(false);
+    }, 0);
   };
 
   const restartGame = () => {
@@ -277,37 +309,40 @@ export default function Home() {
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
       const king = playerPieces.find(p => p.piece === 'King');
-      const allCarriedPieces = king ? [...piecesToCarry, {...king}] : piecesToCarry;
+      const allCarriedPieces = king ? [...piecesToCarry, {...king, cosmetics: king.cosmetics}] : piecesToCarry;
 
       setInventory(prev => ({...prev, pieces: allCarriedPieces}));
       startNextLevel(allCarriedPieces);
   };
 
+  if (isLoading || !board) {
+    return (
+        <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </main>
+    )
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
         <div className="flex-grow flex items-center justify-center">
-          {board ? (
-            <GameBoard
-              board={board}
-              onTileClick={handleTileClick}
-              selectedPiece={selectedPiece}
-              availableMoves={availableMoves}
-            />
-          ) : (
-             <div className="aspect-square w-full max-w-[calc(100vh-10rem)] flex items-center justify-center bg-gray-500/10 rounded-lg border-2 border-primary/50 shadow-2xl shadow-primary/20">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-          )}
+          <GameBoard
+            board={board}
+            onTileClick={handleTileClick}
+            selectedPiece={selectedPiece}
+            availableMoves={availableMoves}
+          />
         </div>
         <GameHud 
           turn={turn}
           level={level}
           inventory={inventory}
           aiReasoning={aiReasoning}
-          isLoading={isLoading || !board}
+          isEnemyThinking={isEnemyThinking}
         />
       </div>
+      <Toaster />
       <LevelCompleteDialog 
         isOpen={isLevelComplete}
         level={level}
