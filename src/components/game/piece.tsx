@@ -96,10 +96,9 @@ export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading 
     <div className="relative flex items-center justify-center w-full h-full">
       <span
         className={cn(
-          'drop-shadow-lg transition-transform duration-300',
+          'drop-shadow-lg',
           size === 'lg' ? 'text-4xl' : 'text-3xl',
-          getPieceColorClass(),
-          piece.piece === 'Pawn' ? getRotationClass() : ''
+          getPieceColorClass()
         )}
         style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
       >
@@ -114,7 +113,8 @@ export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading 
       <div 
         className={cn(
             "absolute w-[var(--cell-size)] h-[var(--cell-size)] ease-in-out pointer-events-none",
-            !isLoading && "transition-all duration-300"
+            !isLoading && "transition-all duration-300",
+            piece.piece === 'Pawn' ? getRotationClass() : ''
         )}
         style={{
             top: `calc(${piece.y} * var(--cell-size))`,
