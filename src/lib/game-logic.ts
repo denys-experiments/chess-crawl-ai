@@ -17,27 +17,27 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
 } } = {
     black: { // Slowest progression
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.75,
+        value: level => 3 + level * 0.5,
     },
     orange: { // Balanced progression
         count: level => 2 + Math.floor(level / 3),
-        value: level => 3 + level * 1.0,
+        value: level => 3 + level * 0.75,
     },
     cyan: { // Fast count, slow value (Swarm)
         count: level => 2 + Math.floor(level / 2.5),
-        value: level => 3 + level * 0.75,
+        value: level => 3 + level * 0.5,
     },
     red: { // Slow count, fast value (Elite)
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 1.25,
+        value: level => 3 + level * 1.0,
     },
     purple: { // Fastest progression
         count: level => 2 + Math.floor(level / 2),
-        value: level => 3 + level * 1.5,
+        value: level => 3 + level * 1.25,
     },
     default: { // Fallback
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.75,
+        value: level => 3 + level * 0.5,
     }
 };
 
@@ -146,17 +146,45 @@ export function initializeBoard(level: number, playerPiecesToPlace: Piece[] = []
   }
   
   const otherPlayerPieces = piecesToPlace.filter(p => p.piece !== 'King');
-  const availablePlayerPositions = shuffle([
-      {x: kingX - 1, y: kingY}, {x: kingX + 1, y: kingY},
-      {x: kingX, y: kingY - 1}, {x: kingX - 1, y: kingY - 1}, {x: kingX + 1, y: kingY - 1},
-      {x: kingX - 2, y: kingY}, {x: kingX + 2, y: kingY},
-  ]).filter(p => isWithinBoard(p.x, p.y, board));
 
-  otherPlayerPieces.forEach(piece => {
-      const pos = availablePlayerPositions.pop();
-      if (pos && !board[pos.y][pos.x]) {
-          board[pos.y][pos.x] = { ...piece, x: pos.x, y: pos.y };
+  // Dynamically find available positions around the king
+  const availablePlayerPositions: Position[] = [];
+  let radius = 1;
+  while (availablePlayerPositions.length < otherPlayerPieces.length && radius < Math.max(width, height)) {
+    // Search in a square perimeter of the given radius
+    for (let i = -radius; i <= radius; i++) {
+      for (let j = -radius; j <= radius; j++) {
+        if (Math.abs(i) < radius && Math.abs(j) < radius) continue; // Only check perimeter
+
+        const px = kingX + i;
+        const py = kingY + j;
+
+        // Only place pieces "in front" of the king (lower y) or on the same row.
+        if (py > kingY) continue;
+
+        if (isWithinBoard(px, py, board) && !board[py][px]) {
+          // Check if position is not already added
+          if (!availablePlayerPositions.some(p => p.x === px && p.y === py)) {
+            availablePlayerPositions.push({ x: px, y: py });
+          }
+        }
       }
+    }
+    radius++;
+  }
+
+  // Sort positions to prioritize those in front and closer to the king
+  availablePlayerPositions.sort((a, b) => {
+    if (a.y !== b.y) return a.y - b.y; // Prioritize lower y (in front)
+    return Math.abs(a.x - kingX) - Math.abs(b.x - kingX); // Then closer to king horizontally
+  });
+
+
+  otherPlayerPieces.forEach((piece, index) => {
+    if (index < availablePlayerPositions.length) {
+      const pos = availablePlayerPositions[index];
+      board[pos.y][pos.x] = { ...piece, x: pos.x, y: pos.y };
+    }
   });
   // --- End: Reworked Player Piece Placement ---
 
