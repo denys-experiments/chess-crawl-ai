@@ -897,7 +897,7 @@ function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChan
             <div>
               <h3 className="font-headline text-lg mb-2 text-primary">The Goal</h3>
               <p>
-                Your goal is simple: survive and conquer. In each level, you must defeat all the enemy Kings on the board. Your own King must survive. If your King is captured, it's game over!
+                Your goal is simple: survive and conquer. In each level, you must defeat all the enemy pieces on the board. Your own King must survive. If your King is captured, it's game over!
               </p>
             </div>
             
@@ -957,8 +957,8 @@ function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChan
                     <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
                         <li>Moves one square forward in its current direction.</li>
                         <li>Captures diagonally forward.</li>
-                        <li>If it hits a wall or another piece, it can "ricochet" and move one square backward instead.</li>
-                        <li>It changes its forward direction when it moves sideways.</li>
+                        <li>If it is adjacent to an obstacle (like a wall or another piece), it can "ricochet" and move one square directly away from it.</li>
+                        <li>Its forward direction changes to match any non-diagonal move it makes.</li>
                     </ul>
                 </li>
               </ul>
