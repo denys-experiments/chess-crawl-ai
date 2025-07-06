@@ -1,7 +1,7 @@
 
 import type { Tile as TileType, Position } from '@/types';
 import { cn } from '@/lib/utils';
-import { Box, User, ShieldQuestion } from 'lucide-react';
+import { Box, User } from 'lucide-react';
 
 interface TileProps {
   tile: TileType;
@@ -22,9 +22,7 @@ export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: T
         return null; // Pieces are rendered separately on the board for animation
       case 'wall':
         return (
-          <div className="w-full h-full bg-slate-700 border-2 border-slate-800 flex items-center justify-center">
-             <ShieldQuestion className="w-8 h-8 text-slate-500" />
-          </div>
+          <div className="w-full h-full bg-stone-800 border-2 border-stone-900/50" />
         );
       case 'chest':
         return <Box className="w-8 h-8 text-yellow-500" />;

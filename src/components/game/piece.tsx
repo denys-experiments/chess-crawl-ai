@@ -39,7 +39,7 @@ export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading 
         return 'text-foreground';
     }
     switch (piece.color) {
-        case 'black': return 'text-red-400';
+        case 'black': return 'text-neutral-400';
         case 'orange': return 'text-orange-400';
         case 'red': return 'text-red-600';
         case 'purple': return 'text-purple-500';
