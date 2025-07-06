@@ -7,6 +7,7 @@ import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
 import { initializeBoard, getValidMoves, isWithinBoard } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,8 @@ import { GamePiece } from '@/components/game/piece';
 import { Loader2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { generateRandomName } from '@/lib/names';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 const SAVE_GAME_KEY = 'chess-crawl-save-game';
 
@@ -84,6 +87,7 @@ export default function Home() {
   const [debugLog, setDebugLog] = useState('');
   const clickLock = useRef(false);
   const [currentTurn, setCurrentTurn] = useState('player');
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const { toast } = useToast();
   
@@ -783,6 +787,7 @@ export default function Home() {
           onAwardCosmetic={handleAwardCosmetic}
           onRestart={restartGame}
           debugLog={debugLog}
+          onShowHelp={() => setIsHelpOpen(true)}
         />
       </div>
       <Toaster />
@@ -795,6 +800,10 @@ export default function Home() {
       <GameOverDialog 
         isOpen={isGameOver}
         onRestart={restartGame}
+      />
+      <HowToPlayDialog
+        isOpen={isHelpOpen}
+        onOpenChange={setIsHelpOpen}
       />
     </main>
   );
@@ -867,6 +876,97 @@ function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () 
         </DialogHeader>
         <DialogFooter>
           <Button onClick={onRestart}>Play Again</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (isOpen: boolean) => void; }) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>How to Play Chess Crawl</DialogTitle>
+          <DialogDescription>
+            A simple guide to your dungeon-crawling adventure.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-[60vh] pr-6">
+          <div className="space-y-6 text-sm">
+            <div>
+              <h3 className="font-headline text-lg mb-2 text-primary">The Goal</h3>
+              <p>
+                Your goal is simple: survive and conquer. In each level, you must defeat all the enemy Kings on the board. Your own King must survive. If your King is captured, it's game over!
+              </p>
+            </div>
+            
+            <Separator />
+
+            <div>
+              <h3 className="font-headline text-lg mb-2 text-primary">Your Turn</h3>
+              <div className="grid md:grid-cols-2 gap-4 items-center">
+                <p>
+                  To move a piece, first click on one of your pieces (they're the white ones). This will highlight its available moves. Then, click on one of the highlighted squares to move there.
+                </p>
+                <Image src="https://placehold.co/400x250.png" alt="Selecting a piece and its available moves" width={400} height={250} className="rounded-md" data-ai-hint="game board" />
+              </div>
+            </div>
+
+            <Separator />
+            
+            <div>
+                <h3 className="font-headline text-lg mb-2 text-primary">Board Objects</h3>
+                <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4 items-center">
+                         <div>
+                            <h4 className="font-semibold mb-1">Sleeping Allies</h4>
+                            <p>These are friendly pieces waiting to be rescued! You can't move onto their square. To wake them up, just move one of your pieces to any square directly adjacent to them. They will join your party immediately.</p>
+                        </div>
+                        <Image src="https://placehold.co/400x250.png" alt="A player piece next to a sleeping ally" width={400} height={250} className="rounded-md" data-ai-hint="chess piece" />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4 items-center">
+                        <div>
+                            <h4 className="font-semibold mb-1">Chests</h4>
+                            <p>Move onto a chest to open it. If a Pawn opens a chest, it gets promoted to a stronger piece! Any other piece will find a cool cosmetic item, like sunglasses or a top hat.</p>
+                        </div>
+                         <Image src="https://placehold.co/400x250.png" alt="A piece opening a chest" width={400} height={250} className="rounded-md" data-ai-hint="treasure chest" />
+                    </div>
+                     <div className="grid md:grid-cols-2 gap-4 items-center">
+                         <div>
+                            <h4 className="font-semibold mb-1">Walls</h4>
+                            <p>These are impassable stone walls. No piece can move through or onto them. Use them to your advantage!</p>
+                        </div>
+                        <Image src="https://placehold.co/400x250.png" alt="Walls on the game board" width={400} height={250} className="rounded-md" data-ai-hint="stone wall" />
+                    </div>
+                </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h3 className="font-headline text-lg mb-2 text-primary">Piece Movements</h3>
+              <p className="mb-2">Pieces move like in chess, but with a roguelike twist!</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><span className="font-semibold">♔ King:</span> Moves one square in any direction. The most important piece!</li>
+                <li><span className="font-semibold">♕ Queen:</span> Moves any number of squares in any direction (horizontally, vertically, or diagonally).</li>
+                <li><span className="font-semibold">♖ Rook:</span> Moves any number of squares horizontally or vertically.</li>
+                <li><span className="font-semibold">♗ Bishop:</span> Moves any number of squares diagonally.</li>
+                <li><span className="font-semibold">♘ Knight:</span> Moves in an "L" shape: two squares in one direction (horizontal or vertical), then one square perpendicular. It can jump over other pieces.</li>
+                <li><span className="font-semibold">♙ Pawn:</span> This one is special!
+                    <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                        <li>Moves one square forward in its current direction.</li>
+                        <li>Captures diagonally forward.</li>
+                        <li>If it hits a wall or another piece, it can "ricochet" and move one square backward instead.</li>
+                        <li>It changes its forward direction when it moves sideways.</li>
+                    </ul>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </ScrollArea>
+        <DialogFooter>
+            <Button onClick={() => onOpenChange(false)}>Got it!</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

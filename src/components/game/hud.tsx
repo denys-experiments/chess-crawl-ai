@@ -4,7 +4,7 @@ import type { Piece, PieceType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown, RotateCcw } from 'lucide-react';
+import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown, RotateCcw, HelpCircle } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -48,6 +48,7 @@ interface GameHudProps {
   onAwardCosmetic: () => void;
   onRestart: () => void;
   debugLog: string;
+  onShowHelp: () => void;
 }
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
@@ -79,7 +80,7 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
 }
 
 export function GameHud(props: GameHudProps) {
-  const { currentTurn, level, inventory, history, isEnemyThinking, selectedPiece, onRestart } = props;
+  const { currentTurn, level, inventory, history, isEnemyThinking, selectedPiece, onRestart, onShowHelp } = props;
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
@@ -96,7 +97,13 @@ export function GameHud(props: GameHudProps) {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="font-headline text-3xl">Chess Crawl</CardTitle>
-            <Badge variant="secondary" className="text-lg">Level {level}</Badge>
+            <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowHelp}>
+                    <HelpCircle className="h-5 w-5" />
+                    <span className="sr-only">How to Play</span>
+                </Button>
+                <Badge variant="secondary" className="text-lg">Level {level}</Badge>
+            </div>
           </div>
           <CardDescription className="flex items-center gap-2 pt-2">
               {isEnemyThinking ? (
