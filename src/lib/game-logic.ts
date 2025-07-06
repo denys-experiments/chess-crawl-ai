@@ -3,6 +3,84 @@ import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 import { generateRandomName } from './names';
 
+const FACTION_PROGRESSION_CONFIG: { [color: string]: { 
+    count: (level: number) => number; 
+    value: (level: number) => number; 
+} } = {
+    black: { // Slowest progression
+        count: level => 2 + Math.floor(level / 4),
+        value: level => 3 + level * 1.5,
+    },
+    orange: { // Balanced progression
+        count: level => 2 + Math.floor(level / 3),
+        value: level => 3 + level * 2.0,
+    },
+    cyan: { // Fast count, slow value (Swarm)
+        count: level => 2 + Math.floor(level / 2.5),
+        value: level => 3 + level * 1.5,
+    },
+    red: { // Slow count, fast value (Elite)
+        count: level => 2 + Math.floor(level / 4),
+        value: level => 3 + level * 2.5,
+    },
+    purple: { // Fastest progression
+        count: level => 2 + Math.floor(level / 2),
+        value: level => 3 + level * 3.0,
+    },
+    default: { // Fallback
+        count: level => 2 + Math.floor(level / 4),
+        value: level => 3 + level * 1.5,
+    }
+};
+
+/**
+ * Generates an army composition for a faction based on points.
+ */
+function generateFactionArmy(
+    maxPieceCount: number, 
+    totalPieceValue: number, 
+    level: number
+): PieceType[] {
+    const pieceCosts: { piece: PieceType; cost: number; minLevel: number }[] = [
+        { piece: 'Queen', cost: 9, minLevel: 8 },
+        { piece: 'Rook', cost: 5, minLevel: 4 },
+        { piece: 'Bishop', cost: 3, minLevel: 3 },
+        { piece: 'Knight', cost: 3, minLevel: 1 },
+        { piece: 'Pawn', cost: 1, minLevel: 1 },
+    ];
+
+    const availablePieces = pieceCosts
+        .filter(p => level >= p.minLevel)
+        .sort((a, b) => b.cost - a.cost);
+
+    let army: PieceType[] = [];
+    let remainingValue = totalPieceValue;
+
+    // Always try to include at least one pawn
+    if (remainingValue >= 1 && army.length < maxPieceCount) {
+        army.push('Pawn');
+        remainingValue -= 1;
+    }
+    
+    // Greedily buy the best available pieces until limits are met
+    while (army.length < maxPieceCount) {
+        let pieceAdded = false;
+        for (const pieceOption of availablePieces) {
+            if (remainingValue >= pieceOption.cost) {
+                army.push(pieceOption.piece);
+                remainingValue -= pieceOption.cost;
+                pieceAdded = true;
+                break; // Restart with the most expensive piece
+            }
+        }
+        if (!pieceAdded) {
+            break; // Can't afford anything else
+        }
+    }
+
+    return army;
+}
+
 function getRandomAllyPiece(level: number): PieceType {
   const pieceWeights: { piece: PieceType; weight: number; minLevel: number }[] = [
     { piece: 'Pawn', weight: 8, minLevel: 1 },
@@ -135,54 +213,60 @@ export function initializeBoard(level: number, playerPiecesToPlace: Piece[] = []
       const { x: fkx, y: fky } = finalKingPos;
       board[fky][fkx] = { type: 'piece', piece: 'King', color: factionColor, x: fkx, y: fky, id: `b-king-${factionColor}-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: level, captures: 0 };
       
+      const progression = FACTION_PROGRESSION_CONFIG[factionColor] || FACTION_PROGRESSION_CONFIG.default;
+      const maxPieceCount = progression.count(level);
+      const totalPieceValue = progression.value(level);
+      
+      const armyToPlace = generateFactionArmy(maxPieceCount, totalPieceValue, level);
+      
       let pawnDirection: Piece['direction'] = 'down';
-      let surroundingOffsets: { dx: number, dy: number, piece: PieceType, minLevel: number }[] = [];
+      if (side === 'left') pawnDirection = 'right';
+      if (side === 'right') pawnDirection = 'left';
 
-      if (side === 'top') {
-          pawnDirection = 'down';
-          surroundingOffsets = [
-              { dx: 0, dy: 1, piece: 'Pawn', minLevel: 1 },
-              { dx: -1, dy: 1, piece: 'Pawn', minLevel: 2 },
-              { dx: -1, dy: 0, piece: 'Knight', minLevel: 3 },
-              { dx: 1, dy: 0, piece: 'Knight', minLevel: 4 },
-          ];
-      } else if (side === 'left') {
-          pawnDirection = 'right';
-          surroundingOffsets = [
-              { dx: 1, dy: 0, piece: 'Pawn', minLevel: 1 },
-              { dx: 1, dy: -1, piece: 'Pawn', minLevel: 2 },
-              { dx: 0, dy: -1, piece: 'Knight', minLevel: 3 },
-              { dx: 0, dy: 1, piece: 'Knight', minLevel: 4 },
-          ];
-      } else if (side === 'right') {
-          pawnDirection = 'left';
-          surroundingOffsets = [
-              { dx: -1, dy: 0, piece: 'Pawn', minLevel: 1 },
-              { dx: -1, dy: 1, piece: 'Pawn', minLevel: 2 },
-              { dx: 0, dy: -1, piece: 'Knight', minLevel: 3 },
-              { dx: 0, dy: 1, piece: 'Knight', minLevel: 4 },
-          ];
+      // Find available positions for the army around the king
+      const openPositions: Position[] = [];
+      let radius = 1;
+      while(openPositions.length < armyToPlace.length && radius < Math.max(width, height)) {
+        for(let i = -radius; i <= radius; i++) {
+            for(let j = -radius; j <= radius; j++) {
+                if (Math.abs(i) < radius && Math.abs(j) < radius) continue; // only check perimeter
+                const px = fkx + i;
+                const py = fky + j;
+
+                // Prefer placing pieces "in front" of the king
+                if (side === 'top' && py <= fky) continue;
+                if (side === 'left' && px <= fkx) continue;
+                if (side === 'right' && px >= fkx) continue;
+
+                if (isWithinBoard(px, py, board) && !board[py][px]) {
+                    const uniquePos = !openPositions.some(p => p.x === px && p.y === py);
+                    if (uniquePos) {
+                        openPositions.push({x: px, y: py});
+                    }
+                }
+            }
+        }
+        radius++;
       }
       
-      surroundingOffsets.forEach((offset, index) => {
-          if (level >= offset.minLevel) {
-              const pieceX = fkx + offset.dx;
-              const pieceY = fky + offset.dy;
-              if (isWithinBoard(pieceX, pieceY, board) && !board[pieceY][pieceX]) {
-                  board[pieceY][pieceX] = {
-                      type: 'piece',
-                      piece: offset.piece,
-                      color: factionColor,
-                      x: pieceX,
-                      y: pieceY,
-                      id: `b-${offset.piece.toLowerCase()}-${factionColor}-${index}-${Date.now()}`,
-                      name: generateRandomName(),
-                      discoveredOnLevel: level,
-                      captures: 0,
-                      ...(offset.piece === 'Pawn' && { direction: pawnDirection })
-                  };
-              }
-          }
+      shuffle(openPositions);
+      
+      armyToPlace.forEach((pieceType, index) => {
+        const pos = openPositions.pop();
+        if (pos) {
+            board[pos.y][pos.x] = {
+                type: 'piece',
+                piece: pieceType,
+                color: factionColor,
+                x: pos.x,
+                y: pos.y,
+                id: `b-${pieceType.toLowerCase()}-${factionColor}-${index}-${Date.now()}`,
+                name: generateRandomName(),
+                discoveredOnLevel: level,
+                captures: 0,
+                ...(pieceType === 'Pawn' && { direction: pawnDirection })
+            };
+        }
       });
   });
 
