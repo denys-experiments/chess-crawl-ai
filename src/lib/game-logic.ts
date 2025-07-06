@@ -17,33 +17,32 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
 } } = {
     black: { // Slowest progression
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.125,
+        value: level => 3 + level * 0.0625,
     },
     orange: { // Balanced progression
         count: level => 2 + Math.floor(level / 3),
-        value: level => 3 + level * 0.1875,
+        value: level => 3 + level * 0.09375,
     },
     cyan: { // Fast count, slow value (Swarm)
         count: level => 2 + Math.floor(level / 2.5),
-        value: level => 3 + level * 0.125,
+        value: level => 3 + level * 0.0625,
     },
     red: { // Slow count, fast value (Elite)
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.25,
+        value: level => 3 + level * 0.125,
     },
     purple: { // Fastest progression
         count: level => 2 + Math.floor(level / 2),
-        value: level => 3 + level * 0.3125,
+        value: level => 3 + level * 0.15625,
     },
     default: { // Fallback
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.125,
+        value: level => 3 + level * 0.0625,
     }
 };
 
 /**
- * Generates an army composition for a faction based on points.
- * Guarantees the army size (maxPieceCount) and uses the budget purely for upgrades.
+ * Generates an army composition for a faction based on points and ratios.
  */
 function generateFactionArmy(
     maxPieceCount: number, 
@@ -62,47 +61,97 @@ function generateFactionArmy(
         .filter(p => effectiveLevel >= p.minLevel)
         .sort((a, b) => b.cost - a.cost);
 
-    // Step 1: Start with a full army of pawns. These are "free".
+    // Step 1: Start with a full army of pawns.
     let army: PieceType[] = Array(maxPieceCount).fill('Pawn');
-    
-    // Step 2: Use the entire totalPieceValue budget to upgrade the pawns.
     let remainingValue = totalPieceValue;
 
-    // Step 3: Repeatedly loop through the army and upgrade pieces until budget runs out.
-    // This multi-pass approach ensures value is distributed more evenly than a single pass.
-    let upgradesMade: boolean;
-    do {
-        upgradesMade = false;
+    // Helper to count pieces in the current army
+    const countPieces = (currentArmy: PieceType[]) => {
+        const counts = { Queen: 0, Rook: 0, Bishop: 0, Knight: 0, Pawn: 0 };
+        for (const piece of currentArmy) {
+            // @ts-ignore
+            if (piece in counts) {
+                // @ts-ignore
+                counts[piece]++;
+            }
+        }
+        return counts;
+    };
+
+    let upgradedInLoop = true;
+    while (upgradedInLoop) {
+        upgradedInLoop = false;
         
-        // Create a list of pieces with their indices, then sort by cost (ascending).
-        // This ensures we always try to upgrade the cheapest pieces first.
-        const sortedPiecesWithIndices = army.map((piece, index) => ({
-            piece,
-            index,
-            cost: pieceCosts.find(p => p.piece === piece)!.cost
-        })).sort((a, b) => a.cost - b.cost);
+        let bestUpgrade: {
+            indexToUpgrade: number;
+            targetPiece: PieceType;
+            cost: number;
+            priority: number;
+        } | null = null;
+        
+        const currentCounts = countPieces(army);
 
-        for (const { index } of sortedPiecesWithIndices) {
-            const currentPieceType = army[index];
-            const currentCost = pieceCosts.find(p => p.piece === currentPieceType)!.cost;
+        // Evaluate all possible upgrades from the current state
+        for (let i = 0; i < army.length; i++) {
+            const currentPiece = army[i];
+            const currentCost = pieceCosts.find(p => p.piece === currentPiece)!.cost;
+            
+            // Iterate through possible upgrade targets for this piece
+            for (const target of availablePieces) {
+                if (target.cost <= currentCost) continue; // Must be an upgrade
 
-            // Find the best possible "next step" upgrade for this piece
-            // by iterating through potential upgrades from cheapest to most expensive.
-            for (const targetPiece of [...availablePieces].reverse()) {
-                // Ensure we are actually upgrading to a more valuable piece
-                if (targetPiece.cost <= currentCost) continue;
+                const upgradeCost = target.cost - currentCost;
+                if (upgradeCost > remainingValue) continue; // Can't afford
 
-                const upgradeCost = targetPiece.cost - currentCost;
-                if (remainingValue >= upgradeCost) {
-                    // This is a valid upgrade, apply it
-                    army[index] = targetPiece.piece;
-                    remainingValue -= upgradeCost;
-                    upgradesMade = true;
-                    break; // Move to the next piece in the sorted list after finding one upgrade
+                // Calculate priority score (lower is better)
+                let priority = 100; // Default to a high number (low priority)
+
+                // Priority 1: Pawn -> Knight/Bishop
+                if (currentPiece === 'Pawn' && (target.piece === 'Knight' || target.piece === 'Bishop')) {
+                    priority = 1;
+                    // Try to balance Knights and Bishops
+                    if (target.piece === 'Knight' && currentCounts.Knight > currentCounts.Bishop) {
+                        priority += 0.5; // Slightly deprioritize if we have more knights
+                    } else if (target.piece === 'Bishop' && currentCounts.Bishop > currentCounts.Knight) {
+                        priority += 0.5; // Slightly deprioritize if we have more bishops
+                    }
+                }
+                
+                // Priority 2: Knight/Bishop -> Rook
+                if ((currentPiece === 'Knight' || currentPiece === 'Bishop') && target.piece === 'Rook') {
+                    // Ratio: Upgrade if we are "behind" on Rooks (2 Rooks for every 3 B/N).
+                    if (currentCounts.Rook * 3 < (currentCounts.Knight + currentCounts.Bishop) * 2) {
+                        priority = 2;
+                    }
+                }
+
+                // Priority 3: Rook -> Queen
+                if (currentPiece === 'Rook' && target.piece === 'Queen') {
+                    // Ratio: Upgrade if we are "behind" on Queens (1 Queen for every 2 Rooks).
+                    if (currentCounts.Queen * 2 < currentCounts.Rook) {
+                        priority = 3;
+                    }
+                }
+                
+                // If this is the best upgrade found so far, save it
+                if (bestUpgrade === null || priority < bestUpgrade.priority) {
+                    bestUpgrade = {
+                        indexToUpgrade: i,
+                        targetPiece: target.piece,
+                        cost: upgradeCost,
+                        priority: priority,
+                    };
                 }
             }
         }
-    } while (upgradesMade && remainingValue > 0); // Continue as long as upgrades are being made and there's budget
+        
+        // If a valid upgrade was found, apply it and continue the loop to re-evaluate
+        if (bestUpgrade) {
+            army[bestUpgrade.indexToUpgrade] = bestUpgrade.targetPiece;
+            remainingValue -= bestUpgrade.cost;
+            upgradedInLoop = true;
+        }
+    }
 
     return army;
 }
