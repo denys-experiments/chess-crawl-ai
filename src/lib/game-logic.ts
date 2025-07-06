@@ -3,33 +3,41 @@ import type { Board, Position, Piece, Tile, PieceType } from '@/types';
 import { getFactionsForLevel } from './factions';
 import { generateRandomName } from './names';
 
+const FACTION_INTRODUCTION_LEVEL: { [color: string]: number } = {
+    black: 1,
+    orange: 4,
+    cyan: 8,
+    red: 12,
+    purple: 16,
+};
+
 const FACTION_PROGRESSION_CONFIG: { [color: string]: { 
     count: (level: number) => number; 
     value: (level: number) => number; 
 } } = {
     black: { // Slowest progression
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 1.5,
+        value: level => 3 + level * 0.75,
     },
     orange: { // Balanced progression
         count: level => 2 + Math.floor(level / 3),
-        value: level => 3 + level * 2.0,
+        value: level => 3 + level * 1.0,
     },
     cyan: { // Fast count, slow value (Swarm)
         count: level => 2 + Math.floor(level / 2.5),
-        value: level => 3 + level * 1.5,
+        value: level => 3 + level * 0.75,
     },
     red: { // Slow count, fast value (Elite)
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 2.5,
+        value: level => 3 + level * 1.25,
     },
     purple: { // Fastest progression
         count: level => 2 + Math.floor(level / 2),
-        value: level => 3 + level * 3.0,
+        value: level => 3 + level * 1.5,
     },
     default: { // Fallback
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 1.5,
+        value: level => 3 + level * 0.75,
     }
 };
 
@@ -39,7 +47,7 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
 function generateFactionArmy(
     maxPieceCount: number, 
     totalPieceValue: number, 
-    level: number
+    effectiveLevel: number
 ): PieceType[] {
     const pieceCosts: { piece: PieceType; cost: number; minLevel: number }[] = [
         { piece: 'Queen', cost: 9, minLevel: 8 },
@@ -50,7 +58,7 @@ function generateFactionArmy(
     ];
 
     const availablePieces = pieceCosts
-        .filter(p => level >= p.minLevel)
+        .filter(p => effectiveLevel >= p.minLevel)
         .sort((a, b) => b.cost - a.cost);
 
     let army: PieceType[] = [];
@@ -213,11 +221,14 @@ export function initializeBoard(level: number, playerPiecesToPlace: Piece[] = []
       const { x: fkx, y: fky } = finalKingPos;
       board[fky][fkx] = { type: 'piece', piece: 'King', color: factionColor, x: fkx, y: fky, id: `b-king-${factionColor}-${Date.now()}`, name: generateRandomName(), discoveredOnLevel: level, captures: 0 };
       
+      const introductionLevel = FACTION_INTRODUCTION_LEVEL[factionColor] || 1;
+      const effectiveLevel = Math.max(1, level - (introductionLevel - 1));
+
       const progression = FACTION_PROGRESSION_CONFIG[factionColor] || FACTION_PROGRESSION_CONFIG.default;
-      const maxPieceCount = progression.count(level);
-      const totalPieceValue = progression.value(level);
+      const maxPieceCount = progression.count(effectiveLevel);
+      const totalPieceValue = progression.value(effectiveLevel);
       
-      const armyToPlace = generateFactionArmy(maxPieceCount, totalPieceValue, level);
+      const armyToPlace = generateFactionArmy(maxPieceCount, totalPieceValue, effectiveLevel);
       
       let pawnDirection: Piece['direction'] = 'down';
       if (side === 'left') pawnDirection = 'right';
