@@ -845,15 +845,17 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                         Congratulations! Your King is automatically carried over. Select up to {maxCarryOver} additional pieces to bring to the next level.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 py-4">
-                    {selectablePieces.map(piece => (
-                        <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center text-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-transparent hover:border-border'}`}>
-                             <GamePiece piece={piece} size="sm" />
-                             <span className="text-xs font-medium mt-1.5 leading-tight">{piece.name}</span>
-                             <span className="text-xs text-muted-foreground">({piece.piece})</span>
-                        </div>
-                    ))}
-                </div>
+                <ScrollArea className="h-[40vh] pr-6">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 py-4">
+                        {selectablePieces.map(piece => (
+                            <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center text-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-transparent hover:border-border'}`}>
+                                 <GamePiece piece={piece} size="sm" />
+                                 <span className="text-xs font-medium mt-1.5 leading-tight">{piece.name}</span>
+                                 <span className="text-xs text-muted-foreground">({piece.piece})</span>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
                 <DialogFooter>
                     <Button onClick={handleConfirm} disabled={selectedPieces.length > maxCarryOver}>
                        Start Level {level + 1} ({selectedPieces.length}/{maxCarryOver} selected)
