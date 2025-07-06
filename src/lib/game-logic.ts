@@ -43,7 +43,7 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
 
 /**
  * Generates an army composition for a faction based on points.
- * This function prioritizes army size (maxPieceCount) first, then upgrades piece quality.
+ * Guarantees the army size (maxPieceCount) and uses the budget purely for upgrades.
  */
 function generateFactionArmy(
     maxPieceCount: number, 
@@ -62,52 +62,44 @@ function generateFactionArmy(
         .filter(p => effectiveLevel >= p.minLevel)
         .sort((a, b) => b.cost - a.cost);
 
-    let army: PieceType[] = [];
-    let remainingValue = totalPieceValue;
-    const pawnCost = 1;
-
-    // Step 1: Fill the army with Pawns up to the maxPieceCount, if budget allows.
-    if (remainingValue < maxPieceCount * pawnCost) {
-        // Not enough budget even for all pawns, so create as many as possible
-        const अफोर्डेबलPawns = Math.floor(remainingValue/pawnCost);
-         for (let i = 0; i < अफोर्डेबलPawns; i++) {
-            army.push('Pawn');
-        }
-        return army;
-    }
+    // Step 1: Start with a full army of pawns. These are "free".
+    let army: PieceType[] = Array(maxPieceCount).fill('Pawn');
     
-    for (let i = 0; i < maxPieceCount; i++) {
-        army.push('Pawn');
-    }
-    remainingValue -= maxPieceCount * pawnCost;
+    // Step 2: Use the entire totalPieceValue budget to upgrade the pawns.
+    let remainingValue = totalPieceValue;
 
-    // Step 2: Repeatedly loop through the army and upgrade pieces until budget runs out.
+    // Step 3: Repeatedly loop through the army and upgrade pieces until budget runs out.
     // This multi-pass approach ensures value is distributed more evenly than a single pass.
     let upgradesMade: boolean;
     do {
         upgradesMade = false;
+        // Shuffle the army indices to upgrade pieces randomly rather than from the start of the array
         const upgradeIndices = shuffle(army.map((_, i) => i));
 
         for (const index of upgradeIndices) {
             const currentPieceType = army[index];
             const currentCost = pieceCosts.find(p => p.piece === currentPieceType)!.cost;
 
-            // Find the best possible upgrade for this piece
+            // Find the best possible upgrade for this piece from the available pieces
             for (const targetPiece of availablePieces) {
+                // Ensure we are actually upgrading to a more valuable piece
+                if (targetPiece.cost <= currentCost) continue;
+
                 const upgradeCost = targetPiece.cost - currentCost;
-                if (upgradeCost > 0 && remainingValue >= upgradeCost) {
-                    // This is a valid upgrade, and since availablePieces is sorted by cost, it's the best one.
+                if (remainingValue >= upgradeCost) {
+                    // This is a valid upgrade, apply it
                     army[index] = targetPiece.piece;
                     remainingValue -= upgradeCost;
                     upgradesMade = true;
-                    break; // Best upgrade found for this piece, move to the next shuffled index
+                    break; // Move to the next piece in the shuffled list
                 }
             }
         }
-    } while (upgradesMade);
+    } while (upgradesMade && remainingValue > 0); // Continue as long as upgrades are being made and there's budget
 
     return army;
 }
+
 
 function getRandomAllyPiece(level: number): PieceType {
   const pieceWeights: { piece: PieceType; weight: number; minLevel: number }[] = [
