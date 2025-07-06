@@ -17,27 +17,27 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
 } } = {
     black: { // Slowest progression
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.5,
+        value: level => 3 + level * 0.25,
     },
     orange: { // Balanced progression
         count: level => 2 + Math.floor(level / 3),
-        value: level => 3 + level * 0.75,
+        value: level => 3 + level * 0.375,
     },
     cyan: { // Fast count, slow value (Swarm)
         count: level => 2 + Math.floor(level / 2.5),
-        value: level => 3 + level * 0.5,
+        value: level => 3 + level * 0.25,
     },
     red: { // Slow count, fast value (Elite)
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 1.0,
+        value: level => 3 + level * 0.5,
     },
     purple: { // Fastest progression
         count: level => 2 + Math.floor(level / 2),
-        value: level => 3 + level * 1.25,
+        value: level => 3 + level * 0.625,
     },
     default: { // Fallback
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.5,
+        value: level => 3 + level * 0.25,
     }
 };
 
@@ -73,10 +73,16 @@ function generateFactionArmy(
     let upgradesMade: boolean;
     do {
         upgradesMade = false;
-        // Shuffle the army indices to upgrade pieces randomly rather than from the start of the array
-        const upgradeIndices = shuffle(army.map((_, i) => i));
+        
+        // Create a list of pieces with their indices, then sort by cost (ascending).
+        // This ensures we always try to upgrade the cheapest pieces first.
+        const sortedPiecesWithIndices = army.map((piece, index) => ({
+            piece,
+            index,
+            cost: pieceCosts.find(p => p.piece === piece)!.cost
+        })).sort((a, b) => a.cost - b.cost);
 
-        for (const index of upgradeIndices) {
+        for (const { index } of sortedPiecesWithIndices) {
             const currentPieceType = army[index];
             const currentCost = pieceCosts.find(p => p.piece === currentPieceType)!.cost;
 
@@ -91,7 +97,7 @@ function generateFactionArmy(
                     army[index] = targetPiece.piece;
                     remainingValue -= upgradeCost;
                     upgradesMade = true;
-                    break; // Move to the next piece in the shuffled list
+                    break; // Move to the next piece in the sorted list
                 }
             }
         }
