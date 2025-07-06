@@ -22,7 +22,7 @@ export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: T
         return null; // Pieces are rendered separately on the board for animation
       case 'wall':
         return (
-          <div className="w-full h-full bg-stone-800 border-2 border-stone-900/50" />
+          <div className="w-full h-full bg-stone-700 border-2 border-t-stone-600 border-l-stone-600 border-b-stone-800 border-r-stone-800" />
         );
       case 'chest':
         return <Box className="w-8 h-8 text-yellow-500" />;
