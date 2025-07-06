@@ -253,7 +253,8 @@ export function initializeBoard(level: number, playerPiecesToPlace: Piece[] = []
       const effectiveLevel = Math.max(1, level - (introductionLevel - 1));
 
       const progression = FACTION_PROGRESSION_CONFIG[factionColor] || FACTION_PROGRESSION_CONFIG.default;
-      const maxPieceCount = progression.count(effectiveLevel);
+      const calculatedPieceCount = progression.count(effectiveLevel);
+      const maxPieceCount = Math.min(calculatedPieceCount, 25);
       const totalPieceValue = progression.value(effectiveLevel);
       
       const armyToPlace = generateFactionArmy(maxPieceCount, totalPieceValue, effectiveLevel);
