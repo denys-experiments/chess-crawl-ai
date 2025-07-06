@@ -17,27 +17,27 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
 } } = {
     black: { // Slowest progression
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.25,
+        value: level => 3 + level * 0.125,
     },
     orange: { // Balanced progression
         count: level => 2 + Math.floor(level / 3),
-        value: level => 3 + level * 0.375,
+        value: level => 3 + level * 0.1875,
     },
     cyan: { // Fast count, slow value (Swarm)
         count: level => 2 + Math.floor(level / 2.5),
-        value: level => 3 + level * 0.25,
+        value: level => 3 + level * 0.125,
     },
     red: { // Slow count, fast value (Elite)
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.5,
+        value: level => 3 + level * 0.25,
     },
     purple: { // Fastest progression
         count: level => 2 + Math.floor(level / 2),
-        value: level => 3 + level * 0.625,
+        value: level => 3 + level * 0.3125,
     },
     default: { // Fallback
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.25,
+        value: level => 3 + level * 0.125,
     }
 };
 
@@ -86,8 +86,9 @@ function generateFactionArmy(
             const currentPieceType = army[index];
             const currentCost = pieceCosts.find(p => p.piece === currentPieceType)!.cost;
 
-            // Find the best possible upgrade for this piece from the available pieces
-            for (const targetPiece of availablePieces) {
+            // Find the best possible "next step" upgrade for this piece
+            // by iterating through potential upgrades from cheapest to most expensive.
+            for (const targetPiece of [...availablePieces].reverse()) {
                 // Ensure we are actually upgrading to a more valuable piece
                 if (targetPiece.cost <= currentCost) continue;
 
@@ -97,7 +98,7 @@ function generateFactionArmy(
                     army[index] = targetPiece.piece;
                     remainingValue -= upgradeCost;
                     upgradesMade = true;
-                    break; // Move to the next piece in the sorted list
+                    break; // Move to the next piece in the sorted list after finding one upgrade
                 }
             }
         }
@@ -272,7 +273,7 @@ export function initializeBoard(level: number, playerPiecesToPlace: Piece[] = []
 
       const progression = FACTION_PROGRESSION_CONFIG[factionColor] || FACTION_PROGRESSION_CONFIG.default;
       const calculatedPieceCount = progression.count(effectiveLevel);
-      const maxPieceCount = Math.min(calculatedPieceCount, 25);
+      const maxPieceCount = Math.min(Math.floor(calculatedPieceCount), 25);
       const totalPieceValue = progression.value(effectiveLevel);
       
       const armyToPlace = generateFactionArmy(maxPieceCount, totalPieceValue, effectiveLevel);
