@@ -218,7 +218,7 @@ export default function Home() {
         factions.add(tile.color);
       }
     }));
-    return Array.from(factions);
+    return Array.from(factions).sort();
   }, [board]);
   
   const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
