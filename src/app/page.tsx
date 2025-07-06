@@ -21,6 +21,8 @@ import { Loader2 } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { generateRandomName } from '@/lib/names';
 
+const SAVE_GAME_KEY = 'chess-crawl-save-game';
+
 function getPromotionPiece(level: number, playerPieces: Piece[]): PieceType {
     const promotionOptions: { piece: PieceType; baseWeight: number }[] = [
         { piece: 'Knight', baseWeight: 4 },
@@ -148,7 +150,9 @@ export default function Home() {
     
     setBoard(newBoard);
     setCurrentTurn('player');
-    setHistory([]);
+    if (isNewGame) {
+      setHistory([]);
+    }
     setIsLevelComplete(false);
     setSelectedPiece(null);
 
@@ -172,9 +176,40 @@ export default function Home() {
   }, [appendToDebugLog, addToHistory]);
   
   useEffect(() => {
-    // This effect runs once on initial mount to set up the game.
-    setupLevel(1, []);
+    const savedGame = localStorage.getItem(SAVE_GAME_KEY);
+    if (savedGame) {
+        try {
+            const parsedData = JSON.parse(savedGame);
+            setLevel(parsedData.level);
+            setBoard(parsedData.board);
+            setCurrentTurn(parsedData.currentTurn);
+            setHistory(parsedData.history || []);
+            setInventory(parsedData.inventory || { pieces: [], cosmetics: [] });
+            setIsLoading(false);
+        } catch (error) {
+            console.error("Failed to load saved game, starting new game.", error);
+            localStorage.removeItem(SAVE_GAME_KEY);
+            setupLevel(1, []);
+        }
+    } else {
+        setupLevel(1, []);
+    }
   }, [setupLevel]);
+
+  useEffect(() => {
+    if (isLoading || isGameOver || isLevelComplete) {
+        return;
+    }
+    const gameState = {
+        level,
+        board,
+        currentTurn,
+        history,
+        inventory,
+    };
+    localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
+  }, [board, currentTurn, history, level, inventory, isLoading, isGameOver, isLevelComplete]);
+
 
   useEffect(() => {
     if (!board) return;
@@ -205,6 +240,7 @@ export default function Home() {
         setIsLevelComplete(true);
       } else if (newPlayerPieces.length === 0 || !newPlayerPieces.some(p => p.piece === 'King')) {
         setIsGameOver(true);
+        localStorage.removeItem(SAVE_GAME_KEY);
       }
     }
   }, [board, level, isLoading]);
@@ -554,6 +590,7 @@ export default function Home() {
   }, [currentTurn, isEnemyThinking, runEnemyTurn, isGameOver, isLevelComplete]);
   
   const restartGame = () => {
+    localStorage.removeItem(SAVE_GAME_KEY);
     setIsLoading(true);
     setDebugLog('');
     setSelectedPiece(null);
