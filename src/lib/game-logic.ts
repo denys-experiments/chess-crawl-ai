@@ -21,7 +21,7 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
     },
     orange: { // Balanced progression
         count: level => 2 + Math.floor(level / 3),
-        value: level => 3 + level * 0.31640625,
+        value: level => 3 + level * 0.421875,
     },
     cyan: { // Fast count, slow value (Swarm)
         count: level => 2 + Math.floor(level / 2.5),
@@ -29,11 +29,11 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
     },
     red: { // Slow count, fast value (Elite)
         count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.421875,
+        value: level => 3 + level * 0.6328125,
     },
     purple: { // Fastest progression
         count: level => 2 + Math.floor(level / 2),
-        value: level => 3 + level * 0.52734375,
+        value: level => 3 + level * 0.84375,
     },
     default: { // Fallback
         count: level => 2 + Math.floor(level / 4),
