@@ -16,28 +16,28 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
     value: (level: number) => number; 
 } } = {
     black: { // Slowest progression
-        count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.2109375,
-    },
-    orange: { // Balanced progression
-        count: level => 2 + Math.floor(level / 3),
+        count: level => 2 + Math.floor(level / 8),
         value: level => 3 + level * 0.421875,
     },
+    orange: { // Balanced progression
+        count: level => 2 + Math.floor(level / 6),
+        value: level => 3 + level * 2.53125,
+    },
     cyan: { // Fast count, slow value (Swarm)
-        count: level => 2 + Math.floor(level / 2.5),
-        value: level => 3 + level * 0.2109375,
+        count: level => 2 + Math.floor(level / 5),
+        value: level => 3 + level * 0.421875,
     },
     red: { // Slow count, fast value (Elite)
-        count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.6328125,
+        count: level => 2 + Math.floor(level / 8),
+        value: level => 3 + level * 4.21875,
     },
     purple: { // Fastest progression
-        count: level => 2 + Math.floor(level / 2),
-        value: level => 3 + level * 0.84375,
+        count: level => 2 + Math.floor(level / 4),
+        value: level => 3 + level * 5.90625,
     },
     default: { // Fallback
-        count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 0.2109375,
+        count: level => 2 + Math.floor(level / 8),
+        value: level => 3 + level * 0.421875,
     }
 };
 
