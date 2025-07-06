@@ -43,6 +43,7 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
 
 /**
  * Generates an army composition for a faction based on points.
+ * This function prioritizes army size (maxPieceCount) first, then upgrades piece quality.
  */
 function generateFactionArmy(
     maxPieceCount: number, 
@@ -63,28 +64,47 @@ function generateFactionArmy(
 
     let army: PieceType[] = [];
     let remainingValue = totalPieceValue;
+    const pawnCost = 1;
 
-    // Always try to include at least one pawn
-    if (remainingValue >= 1 && army.length < maxPieceCount) {
-        army.push('Pawn');
-        remainingValue -= 1;
+    // Step 1: Fill the army with Pawns up to the maxPieceCount, if budget allows.
+    if (remainingValue < maxPieceCount * pawnCost) {
+        // Not enough budget even for all pawns, so create as many as possible
+        const अफोर्डेबलPawns = Math.floor(remainingValue/pawnCost);
+         for (let i = 0; i < अफोर्डेबलPawns; i++) {
+            army.push('Pawn');
+        }
+        return army;
     }
     
-    // Greedily buy the best available pieces until limits are met
-    while (army.length < maxPieceCount) {
-        let pieceAdded = false;
-        for (const pieceOption of availablePieces) {
-            if (remainingValue >= pieceOption.cost) {
-                army.push(pieceOption.piece);
-                remainingValue -= pieceOption.cost;
-                pieceAdded = true;
-                break; // Restart with the most expensive piece
+    for (let i = 0; i < maxPieceCount; i++) {
+        army.push('Pawn');
+    }
+    remainingValue -= maxPieceCount * pawnCost;
+
+    // Step 2: Repeatedly loop through the army and upgrade pieces until budget runs out.
+    // This multi-pass approach ensures value is distributed more evenly than a single pass.
+    let upgradesMade: boolean;
+    do {
+        upgradesMade = false;
+        const upgradeIndices = shuffle(army.map((_, i) => i));
+
+        for (const index of upgradeIndices) {
+            const currentPieceType = army[index];
+            const currentCost = pieceCosts.find(p => p.piece === currentPieceType)!.cost;
+
+            // Find the best possible upgrade for this piece
+            for (const targetPiece of availablePieces) {
+                const upgradeCost = targetPiece.cost - currentCost;
+                if (upgradeCost > 0 && remainingValue >= upgradeCost) {
+                    // This is a valid upgrade, and since availablePieces is sorted by cost, it's the best one.
+                    army[index] = targetPiece.piece;
+                    remainingValue -= upgradeCost;
+                    upgradesMade = true;
+                    break; // Best upgrade found for this piece, move to the next shuffled index
+                }
             }
         }
-        if (!pieceAdded) {
-            break; // Can't afford anything else
-        }
-    }
+    } while (upgradesMade);
 
     return army;
 }
