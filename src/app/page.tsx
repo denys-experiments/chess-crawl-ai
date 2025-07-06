@@ -81,7 +81,7 @@ export default function Home() {
   const [isPlayerMoving, setIsPlayerMoving] = useState(false);
   const [debugLog, setDebugLog] = useState('');
   const clickLock = useRef(false);
-  const [turnIndex, setTurnIndex] = useState(0);
+  const [currentTurn, setCurrentTurn] = useState('player');
 
   const { toast } = useToast();
   
@@ -90,7 +90,7 @@ export default function Home() {
   }, []);
 
   const addToHistory = useCallback((message: string) => {
-    setHistory(prev => [message, ...prev]);
+    setHistory(prev => [message, ...prev].slice(0, 50));
   }, []);
 
   const setupLevel = useCallback((levelToSetup: number, piecesToCarry: Piece[]) => {
@@ -147,7 +147,7 @@ export default function Home() {
     }));
     
     setBoard(newBoard);
-    setTurnIndex(0);
+    setCurrentTurn('player');
     setHistory([]);
     setIsLevelComplete(false);
     setSelectedPiece(null);
@@ -173,7 +173,6 @@ export default function Home() {
   
   useEffect(() => {
     // This effect runs once on initial mount to set up the game.
-    // The previous sessionStorage logic was causing issues with hot-reloading in dev.
     setupLevel(1, []);
   }, [setupLevel]);
 
@@ -222,7 +221,14 @@ export default function Home() {
   }, [board]);
   
   const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
-  const currentTurn = useMemo(() => turnOrder[turnIndex % turnOrder.length], [turnOrder, turnIndex]);
+
+  const advanceTurn = useCallback(() => {
+    setCurrentTurn(prevTurn => {
+      const currentIndex = turnOrder.indexOf(prevTurn);
+      const nextIndex = (currentIndex + 1) % turnOrder.length;
+      return turnOrder[nextIndex];
+    });
+  }, [turnOrder]);
   
   const checkForAllyRescue = useCallback((pos: Position, currentBoard: Board, levelForRescue: number) => {
     const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
@@ -350,10 +356,10 @@ export default function Home() {
     setSelectedPiece(null);
     
     setTimeout(() => {
-        setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+        advanceTurn();
         onComplete();
     }, 300);
-  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, turnOrder, addToHistory]);
+  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
@@ -400,8 +406,8 @@ export default function Home() {
     
     addToHistory(reasoning);
     setIsEnemyThinking(false);
-    setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
-  }, [turnOrder, addToHistory]);
+    advanceTurn();
+  }, [advanceTurn, addToHistory]);
 
   const runEnemyTurn = useCallback((factionColor: string) => {
     if (!board) return;
@@ -418,7 +424,7 @@ export default function Home() {
 
     if (enemies.length === 0) {
       setIsEnemyThinking(false);
-      setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+      advanceTurn();
       return;
     }
 
@@ -492,7 +498,7 @@ export default function Home() {
     if (allPossibleMoves.length === 0) {
         addToHistory(`The ${factionColor} faction has no available moves.`);
         setIsEnemyThinking(false);
-        setTurnIndex((prevIndex) => (prevIndex + 1) % turnOrder.length);
+        advanceTurn();
         return;
     }
 
@@ -538,7 +544,7 @@ export default function Home() {
     setTimeout(() => {
         finishEnemyTurn(factionColor, newPieceState, targetTile);
     }, 300);
-  }, [board, turnOrder, finishEnemyTurn, addToHistory]);
+  }, [board, advanceTurn, finishEnemyTurn, addToHistory]);
 
 
   useEffect(() => {
@@ -605,7 +611,7 @@ export default function Home() {
     setBoard(newBoard);
     setSelectedPiece(null);
     setAvailableMoves([]);
-    setTurnIndex(0);
+    setCurrentTurn('player');
     setHistory([]);
     setIsLevelComplete(false);
     setIsGameOver(false);
@@ -738,6 +744,7 @@ export default function Home() {
           onCreatePiece={handleCreatePiece}
           onPromotePawn={handlePromotePawn}
           onAwardCosmetic={handleAwardCosmetic}
+          onRestart={restartGame}
           debugLog={debugLog}
         />
       </div>

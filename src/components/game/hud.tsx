@@ -4,13 +4,13 @@ import type { Piece, PieceType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown } from 'lucide-react';
+import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown, RotateCcw } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -22,6 +22,16 @@ import {
 } from "@/components/ui/select";
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 interface GameHudProps {
@@ -36,6 +46,7 @@ interface GameHudProps {
   onCreatePiece: (pieceType: PieceType) => void;
   onPromotePawn: () => void;
   onAwardCosmetic: () => void;
+  onRestart: () => void;
   debugLog: string;
 }
 
@@ -68,8 +79,9 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
 }
 
 export function GameHud(props: GameHudProps) {
-  const { currentTurn, level, inventory, history, isEnemyThinking, selectedPiece } = props;
+  const { currentTurn, level, inventory, history, isEnemyThinking, selectedPiece, onRestart } = props;
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const getTurnText = () => {
     if (currentTurn === 'player') {
@@ -79,61 +91,86 @@ export function GameHud(props: GameHudProps) {
   };
 
   return (
-    <Card className="w-full md:w-96 md:max-w-sm flex-shrink-0 bg-card/50 backdrop-blur-sm border-primary/30">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="font-headline text-3xl">Chess Crawl</CardTitle>
-          <Badge variant="secondary" className="text-lg">Level {level}</Badge>
-        </div>
-        <CardDescription className="flex items-center gap-2 pt-2">
-            {isEnemyThinking ? (
-                <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Enemy is thinking...</span>
-                </>
-            ) : (
-                <span className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
-                    {getTurnText()}
-                </span>
-            )}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {selectedPiece && <PieceInfoPanel piece={selectedPiece} />}
-        <div>
-          <h4 className="font-headline text-lg mb-2 text-primary">Inventory</h4>
-          <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2">
-                <PawPrint className="w-5 h-5 text-muted-foreground" />
-                <span>Allies: {inventory.pieces.length}</span>
-             </div>
-             <div className="flex items-center gap-2">
-                <Glasses className="w-5 h-5 text-muted-foreground" />
-                <span>Cosmetics: {inventory.cosmetics.length}</span>
-             </div>
+    <>
+      <Card className="w-full md:w-96 md:max-w-sm flex-shrink-0 bg-card/50 backdrop-blur-sm border-primary/30">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="font-headline text-3xl">Chess Crawl</CardTitle>
+            <Badge variant="secondary" className="text-lg">Level {level}</Badge>
           </div>
-        </div>
-        <div>
-            <h4 className="font-headline text-lg mb-2 text-primary">History</h4>
-            <ScrollArea className="h-48 w-full rounded-md border bg-background/50 p-4">
-                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{history.join('\n') || 'Level history will appear here...'}</pre>
-            </ScrollArea>
-        </div>
-        
-        <Collapsible open={isCheatsOpen} onOpenChange={setIsCheatsOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="w-full">
-              <Wand2 className="mr-2 h-4 w-4" />
-              <span>Cheats</span>
-              <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="py-4 border-t border-border mt-4">
-             <CheatPanel {...props} />
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
+          <CardDescription className="flex items-center gap-2 pt-2">
+              {isEnemyThinking ? (
+                  <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Enemy is thinking...</span>
+                  </>
+              ) : (
+                  <span className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
+                      {getTurnText()}
+                  </span>
+              )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {selectedPiece && <PieceInfoPanel piece={selectedPiece} />}
+          <div>
+            <h4 className="font-headline text-lg mb-2 text-primary">Inventory</h4>
+            <div className="flex items-center gap-4">
+               <div className="flex items-center gap-2">
+                  <PawPrint className="w-5 h-5 text-muted-foreground" />
+                  <span>Allies: {inventory.pieces.length}</span>
+               </div>
+               <div className="flex items-center gap-2">
+                  <Glasses className="w-5 h-5 text-muted-foreground" />
+                  <span>Cosmetics: {inventory.cosmetics.length}</span>
+               </div>
+            </div>
+          </div>
+          <div>
+              <h4 className="font-headline text-lg mb-2 text-primary">History</h4>
+              <ScrollArea className="h-48 w-full rounded-md border bg-background/50 p-4">
+                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{history.join('\n') || 'Level history will appear here...'}</pre>
+              </ScrollArea>
+          </div>
+          
+          <Collapsible open={isCheatsOpen} onOpenChange={setIsCheatsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <Wand2 className="mr-2 h-4 w-4" />
+                <span>Cheats</span>
+                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="py-4 border-t border-border mt-4">
+               <CheatPanel {...props} />
+            </CollapsibleContent>
+          </Collapsible>
+          
+          <Button variant="outline" className="w-full border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setIsResetDialogOpen(true)}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Restart Game
+          </Button>
+
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All of your progress will be lost, and the game will restart from Level 1.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onRestart} className={buttonVariants({ variant: "destructive" })}>
+              Restart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
