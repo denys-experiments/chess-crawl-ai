@@ -3,3 +3,23 @@
 This is a NextJS starter in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
+
+## About This Project: An AI-Generated Game
+
+This entire game, "Chess Crawl," was created from scratch by a large language model (LLM) using a technique we call **"vibe coding."**
+
+### What is Vibe Coding?
+Vibe coding is a collaborative, conversational approach to software development. Instead of writing precise code, the developer provides high-level goals, feedback, and "vibes" to an AI coding partner. The AI then interprets these instructions to generate, modify, and debug the application's code.
+
+This project started with a simple prompt: "create a roguelike chess game." From there, every feature—from piece movement and enemy AI to UI design and faction progression—was built through a series of natural language requests and refinements.
+
+### Technical Design
+The project was intentionally built using a modern, component-based web stack to facilitate rapid, iterative development by the AI.
+
+*   **Framework:** Next.js with the App Router
+*   **Language:** TypeScript
+*   **UI:** React, Tailwind CSS, and ShadCN UI components
+*   **AI Functionality:** Google's Gemini models via Genkit (though the game's core logic was ultimately implemented algorithmically for performance)
+
+### Project Goals
+The primary goal of "Chess Crawl" is to serve as a demonstration of how AI can act as a powerful co-creator in the development process. It showcases the ability to build a functional, playable, and complex application through iterative, conversational prompts, transforming a simple idea into a tangible product with remarkable speed.
