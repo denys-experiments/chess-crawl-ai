@@ -112,6 +112,7 @@ export const en = {
     language: "Language",
     english: "English",
     debug: "Debug",
+    ukrainian: "Ukrainian",
   },
 };
 

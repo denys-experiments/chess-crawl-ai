@@ -131,6 +131,7 @@ export function GameHud(props: GameHudProps) {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="en">🇬🇧 {t('hud.english')}</SelectItem>
+                    <SelectItem value="ua">🇺🇦 {t('hud.ukrainian')}</SelectItem>
                     <SelectItem value="dbg">🐛 {t('hud.debug')}</SelectItem>
                 </SelectContent>
             </Select>

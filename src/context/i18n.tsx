@@ -4,9 +4,10 @@
 import React, { createContext, useState, useContext, useCallback, useMemo } from 'react';
 import { en } from '@/locales/en';
 import { dbg } from '@/locales/dbg';
+import { ua } from '@/locales/ua';
 import type { Locale } from '@/locales/en';
 
-const locales: { [key: string]: Locale } = { en, dbg };
+const locales: { [key: string]: Locale } = { en, dbg, ua };
 
 export type LocaleKey = keyof typeof locales;
 
@@ -26,7 +27,7 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
   const [locale, setLocale] = useState<LocaleKey>('en');
 
   const t = useCallback((key: string, values?: Record<string, string | number>): string => {
-    const languageStrings = locales[locale];
+    const languageStrings = locales[locale] || locales['en'];
     let translation = getValueFromPath(languageStrings, key) || key;
 
     if (values) {

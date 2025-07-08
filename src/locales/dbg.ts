@@ -114,5 +114,6 @@ export const dbg: Locale = {
     language: "!hud.language!",
     english: "!hud.english!",
     debug: "!hud.debug!",
+    ukrainian: "!hud.ukrainian!",
   },
 };
