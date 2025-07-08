@@ -1,5 +1,5 @@
 
-import type { Board, Position, Piece, Tile, PieceType } from '@/types';
+import type { Board, Position, Piece, Tile, PieceType, PieceColor } from '@/types';
 import { getFactionsForLevel } from './factions';
 import { generateRandomName } from './names';
 
@@ -16,27 +16,27 @@ const FACTION_PROGRESSION_CONFIG: { [color: string]: {
     value: (level: number) => number; 
 } } = {
     black: { // Slowest progression
-        count: level => 2 + Math.floor(level / 8),
+        count: level => 2 + Math.floor(level / 16),
         value: level => 3 + level * 0.421875,
     },
     orange: { // Balanced progression
-        count: level => 2 + Math.floor(level / 6),
-        value: level => 3 + level * 2.53125,
+        count: level => 2 + Math.floor(level / 12),
+        value: level => 3 + level * 5.0625,
     },
     cyan: { // Fast count, slow value (Swarm)
-        count: level => 2 + Math.floor(level / 5),
+        count: level => 2 + Math.floor(level / 10),
         value: level => 3 + level * 0.421875,
     },
     red: { // Slow count, fast value (Elite)
-        count: level => 2 + Math.floor(level / 8),
-        value: level => 3 + level * 4.21875,
+        count: level => 2 + Math.floor(level / 16),
+        value: level => 3 + level * 8.4375,
     },
     purple: { // Fastest progression
-        count: level => 2 + Math.floor(level / 4),
-        value: level => 3 + level * 5.90625,
+        count: level => 2 + Math.floor(level / 8),
+        value: level => 3 + level * 11.8125,
     },
     default: { // Fallback
-        count: level => 2 + Math.floor(level / 8),
+        count: level => 2 + Math.floor(level / 16),
         value: level => 3 + level * 0.421875,
     }
 };
@@ -615,4 +615,82 @@ function getSlidingMoves(pos: Position, piece: Piece, board: Board, directions: 
   });
 
   return moves;
+}
+
+export function isSquareAttackedBy(pos: Position, board: Board, attackerColors: PieceColor[]): boolean {
+    const { x, y } = pos;
+
+    // Check for sliding pieces (Rooks, Bishops, Queens)
+    const slideDirections = [
+        { d: [-1, 0], pieces: ['Rook', 'Queen'] }, { d: [1, 0], pieces: ['Rook', 'Queen'] },
+        { d: [0, -1], pieces: ['Rook', 'Queen'] }, { d: [0, 1], pieces: ['Rook', 'Queen'] },
+        { d: [-1, -1], pieces: ['Bishop', 'Queen'] }, { d: [-1, 1], pieces: ['Bishop', 'Queen'] },
+        { d: [1, -1], pieces: ['Bishop', 'Queen'] }, { d: [1, 1], pieces: ['Bishop', 'Queen'] },
+    ];
+
+    for (const { d: [dx, dy], pieces } of slideDirections) {
+        let cx = x + dx;
+        let cy = y + dy;
+        while (isWithinBoard(cx, cy, board)) {
+            const tile = board[cy][cx];
+            if (tile) {
+                if (tile.type === 'piece' && attackerColors.includes(tile.color) && pieces.includes(tile.piece)) {
+                    return true;
+                }
+                break; // Path is blocked
+            }
+            cx += dx;
+            cy += dy;
+        }
+    }
+
+    // Check for Knights
+    const knightOffsets = [[1, 2], [1, -2], [-1, 2], [-1, -2], [2, 1], [2, -1], [-2, 1], [-2, -1]];
+    for (const [dx, dy] of knightOffsets) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (isWithinBoard(nx, ny, board)) {
+            const tile = board[ny][nx];
+            if (tile?.type === 'piece' && tile.piece === 'Knight' && attackerColors.includes(tile.color)) {
+                return true;
+            }
+        }
+    }
+    
+    // Check for Kings
+    const kingOffsets = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (const [dx, dy] of kingOffsets) {
+        const kx = x + dx;
+        const ky = y + dy;
+        if (isWithinBoard(kx, ky, board)) {
+            const tile = board[ky][kx];
+            if (tile?.type === 'piece' && tile.piece === 'King' && attackerColors.includes(tile.color)) {
+                return true;
+            }
+        }
+    }
+
+    // Check for pawns by iterating all of them (simpler than complex reverse-check)
+    for (let r = 0; r < board.length; r++) {
+        for (let c = 0; c < board[0].length; c++) {
+            const tile = board[r][c];
+            if (tile?.type === 'piece' && tile.piece === 'Pawn' && attackerColors.includes(tile.color)) {
+                const attackerPos = { x: c, y: r };
+                const pawnDir = tile.direction || (tile.color === 'white' ? 'up' : 'down');
+                const captureDirections = {
+                    'up':    [{ dx: -1, dy: -1 }, { dx: 1, dy: -1 }],
+                    'down':  [{ dx: -1, dy: 1 }, { dx: 1, dy: 1 }],
+                    'left':  [{ dx: -1, dy: -1 }, { dx: -1, dy: 1 }],
+                    'right': [{ dx: 1, dy: -1 }, { dx: 1, dy: 1 }],
+                };
+                for (const { dx, dy } of captureDirections[pawnDir]) {
+                    if (attackerPos.x + dx === x && attackerPos.y + dy === y) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    
+    return false;
 }

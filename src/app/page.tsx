@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { Piece, Board, Position, PieceType, Tile } from '@/types';
+import type { Piece, Board, Position, PieceType, Tile, AvailableMove } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
-import { initializeBoard, getValidMoves, isWithinBoard } from '@/lib/game-logic';
+import { initializeBoard, getValidMoves, isWithinBoard, isSquareAttackedBy } from '@/lib/game-logic';
 import { useToast } from "@/hooks/use-toast";
 import Image from 'next/image';
 import {
@@ -74,7 +74,7 @@ export default function Home() {
   const [level, setLevel] = useState(1);
   const [board, setBoard] = useState<Board | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<Position | null>(null);
-  const [availableMoves, setAvailableMoves] = useState<Position[]>([]);
+  const [availableMoves, setAvailableMoves] = useState<AvailableMove[]>([]);
   const [playerPieces, setPlayerPieces] = useState<Piece[]>([]);
   const [enemyPieces, setEnemyPieces] = useState<Piece[]>([]);
   const [inventory, setInventory] = useState<{ pieces: Piece[], cosmetics: string[] }>({ pieces: [], cosmetics: [] });
@@ -84,6 +84,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEnemyThinking, setIsEnemyThinking] = useState(false);
   const [isPlayerMoving, setIsPlayerMoving] = useState(false);
+  const [isKingInCheck, setIsKingInCheck] = useState(false);
   const [debugLog, setDebugLog] = useState('');
   const clickLock = useRef(false);
   const [currentTurn, setCurrentTurn] = useState('player');
@@ -140,7 +141,7 @@ export default function Home() {
               captures: 0,
             };
             addToHistory(`A friendly ${newPieceType} (${newPieceName}) has woken up and joined your party!`);
-            checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard);
+            checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard, levelToSetup);
           }
         }
       });
@@ -238,6 +239,15 @@ export default function Home() {
     });
     setPlayerPieces(newPlayerPieces);
     setEnemyPieces(newEnemyPieces);
+    
+    const playerKing = newPlayerPieces.find(p => p.piece === 'King');
+    if (playerKing) {
+        const enemyFactions = Array.from(new Set(newEnemyPieces.map(p => p.color)));
+        const inCheck = isSquareAttackedBy({ x: playerKing.x, y: playerKing.y }, board, enemyFactions);
+        setIsKingInCheck(inCheck);
+    } else {
+        setIsKingInCheck(false);
+    }
 
     if (level > 0 && !isLoading) {
       if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0) {
@@ -302,14 +312,33 @@ export default function Home() {
 
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
-      setAvailableMoves(getValidMoves(selectedPiece, board));
+      const piece = board[selectedPiece.y][selectedPiece.x];
+      const baseMoves = getValidMoves(selectedPiece, board);
+
+      if (piece?.type === 'piece' && piece.piece === 'King' && piece.color === 'white') {
+          const enemyFactions = Array.from(new Set(enemyPieces.map(p => p.color)));
+          
+          const threatenedMoves = baseMoves.map(move => {
+              const tempBoard = board.map(r => r.map(t => t ? {...t} : null));
+              const kingPiece = tempBoard[selectedPiece.y][selectedPiece.x];
+              if(kingPiece) {
+                  tempBoard[move.y][move.x] = kingPiece;
+                  tempBoard[selectedPiece.y][selectedPiece.x] = null;
+              }
+              const isThreatened = isSquareAttackedBy(move, tempBoard, enemyFactions);
+              return { ...move, isThreatened };
+          });
+          setAvailableMoves(threatenedMoves);
+      } else {
+        setAvailableMoves(baseMoves.map(m => ({...m, isThreatened: false })));
+      }
     } else if (currentTurn !== 'player') {
       // Do nothing, keep selection
     }
     else {
       setAvailableMoves([]);
     }
-  }, [selectedPiece, board, currentTurn]);
+  }, [selectedPiece, board, currentTurn, enemyPieces]);
 
   const movePiece = useCallback((from: Position, to: Position, onComplete: () => void) => {
     if (!board) return;
@@ -771,6 +800,7 @@ export default function Home() {
             selectedPiece={selectedPiece}
             availableMoves={availableMoves}
             isLoading={isLoading}
+            isKingInCheck={isKingInCheck}
           />
         </div>
         <GameHud 
@@ -909,7 +939,7 @@ function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChan
               <h3 className="font-headline text-lg mb-2 text-primary">Your Turn</h3>
               <div className="grid md:grid-cols-2 gap-4 items-center">
                 <p>
-                  To move a piece, first click on one of your pieces (they're the white ones). This will highlight its available moves. Then, click on one of the highlighted squares to move there.
+                  To move a piece, first click on one of your pieces (they're the white ones). This will highlight its available moves. Then, click on one of the highlighted squares to move there. If your King is under attack, it will glow red. Be careful—moves that would keep your King in danger will also be highlighted in red!
                 </p>
                 <Image src="https://placehold.co/400x250.png" alt="Selecting a piece and its available moves" width={400} height={250} className="rounded-md" data-ai-hint="game board" />
               </div>

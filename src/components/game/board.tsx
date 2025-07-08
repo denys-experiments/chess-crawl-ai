@@ -1,6 +1,6 @@
 
 import { useRef, useEffect } from 'react';
-import type { Board, Position, Piece } from '@/types';
+import type { Board, Position, Piece, AvailableMove } from '@/types';
 import { Tile } from './tile';
 import { cn } from '@/lib/utils';
 import { GamePiece } from './piece';
@@ -9,11 +9,12 @@ interface GameBoardProps {
   board: Board;
   onTileClick: (x: number, y: number) => void;
   selectedPiece: Position | null;
-  availableMoves: Position[];
+  availableMoves: AvailableMove[];
   isLoading?: boolean;
+  isKingInCheck?: boolean;
 }
 
-export function GameBoard({ board, onTileClick, selectedPiece, availableMoves, isLoading }: GameBoardProps) {
+export function GameBoard({ board, onTileClick, selectedPiece, availableMoves, isLoading, isKingInCheck }: GameBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
 
@@ -109,19 +110,29 @@ export function GameBoard({ board, onTileClick, selectedPiece, availableMoves, i
         } as React.CSSProperties}
       >
         {board.map((row, y) =>
-          row.map((tile, x) => (
-            <Tile
-              key={`${x}-${y}`}
-              tile={tile}
-              position={{ x, y }}
-              onClick={() => handleTileClickWrapper(x, y)}
-              isSelected={selectedPiece?.x === x && selectedPiece?.y === y}
-              isAvailableMove={availableMoves.some(move => move.x === x && move.y === y)}
-            />
-          ))
+          row.map((tile, x) => {
+            const availableMove = availableMoves.find(move => move.x === x && move.y === y);
+            return (
+              <Tile
+                key={`${x}-${y}`}
+                tile={tile}
+                position={{ x, y }}
+                onClick={() => handleTileClickWrapper(x, y)}
+                isSelected={selectedPiece?.x === x && selectedPiece?.y === y}
+                isAvailableMove={!!availableMove}
+                isThreatenedMove={availableMove?.isThreatened}
+              />
+            )
+          })
         )}
         {allPieces.map(piece => (
-            <GamePiece key={piece.id} piece={piece} isBoardPiece={true} isLoading={isLoading} />
+            <GamePiece 
+              key={piece.id} 
+              piece={piece} 
+              isBoardPiece={true} 
+              isLoading={isLoading} 
+              isThreatened={piece.piece === 'King' && piece.color === 'white' && isKingInCheck}
+            />
         ))}
       </div>
     </div>

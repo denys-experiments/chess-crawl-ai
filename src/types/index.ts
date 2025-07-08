@@ -37,3 +37,7 @@ export interface Position {
   x: number;
   y: number;
 }
+
+export interface AvailableMove extends Position {
+  isThreatened?: boolean;
+}

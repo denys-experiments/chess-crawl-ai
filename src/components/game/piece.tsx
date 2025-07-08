@@ -7,9 +7,10 @@ interface PieceProps {
   size?: 'sm' | 'lg';
   isBoardPiece?: boolean;
   isLoading?: boolean;
+  isThreatened?: boolean;
 }
 
-export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading = false }: PieceProps) {
+export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading = false, isThreatened = false }: PieceProps) {
   const getPieceUnicode = () => {
     const isWhite = piece.color === 'white';
     switch (piece.piece) {
@@ -112,16 +113,18 @@ export function GamePiece({ piece, size = 'lg', isBoardPiece = false, isLoading 
     return (
       <div 
         className={cn(
-            "absolute z-10 w-[var(--cell-size)] h-[var(--cell-size)] ease-in-out pointer-events-none",
+            "absolute z-10 w-[var(--cell-size)] h-[var(--cell-size)] ease-in-out pointer-events-none flex items-center justify-center",
             !isLoading && "transition-all duration-300",
-            getRotationClass()
+            getRotationClass(),
         )}
         style={{
             top: `calc(${piece.y} * var(--cell-size))`,
             left: `calc(${piece.x} * var(--cell-size))`,
         }}
       >
-        {pieceVisuals}
+        <div className={cn("w-full h-full", isThreatened && "rounded-full shadow-[0_0_15px_3px_hsl(var(--destructive))] animate-pulse")}>
+          {pieceVisuals}
+        </div>
       </div>
     );
   }

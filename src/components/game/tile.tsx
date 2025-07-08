@@ -9,9 +9,10 @@ interface TileProps {
   onClick: () => void;
   isSelected: boolean;
   isAvailableMove: boolean;
+  isThreatenedMove?: boolean;
 }
 
-export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: TileProps) {
+export function Tile({ tile, position, onClick, isSelected, isAvailableMove, isThreatenedMove }: TileProps) {
   const { x, y } = position;
   const isDark = (x + y) % 2 !== 0;
 
@@ -50,9 +51,14 @@ export function Tile({ tile, position, onClick, isSelected, isAvailableMove }: T
           <div
             className={cn(
               'animate-pulse rounded-full',
-              tile?.type === 'piece'
-                ? 'h-full w-full border-4 border-destructive/60'
-                : 'h-1/3 w-1/3 bg-accent/60'
+              // Is this move a capture?
+              tile?.type === 'piece' 
+                ? 'h-full w-full border-4'
+                : 'h-1/3 w-1/3',
+              // Is the move to a threatened square?
+              isThreatenedMove
+                ? (tile?.type === 'piece' ? 'border-destructive/80' : 'bg-destructive/60')
+                : (tile?.type === 'piece' ? 'border-accent/80' : 'bg-accent/60')
             )}
           />
         </div>
