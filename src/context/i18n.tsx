@@ -5,9 +5,10 @@ import React, { createContext, useState, useContext, useCallback, useMemo } from
 import { en } from '@/locales/en';
 import { dbg } from '@/locales/dbg';
 import { ua } from '@/locales/ua';
+import { ja } from '@/locales/ja';
 import type { Locale } from '@/locales/en';
 
-const locales: { [key: string]: Locale } = { en, dbg, ua };
+const locales: { [key: string]: Locale } = { en, dbg, ua, ja };
 
 export type LocaleKey = keyof typeof locales;
 

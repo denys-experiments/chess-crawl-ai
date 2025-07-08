@@ -183,6 +183,7 @@ export function GameHud(props: GameHudProps) {
                 <SelectContent>
                     <SelectItem value="en">🇬🇧 {t('hud.english')}</SelectItem>
                     <SelectItem value="ua">🇺🇦 {t('hud.ukrainian')}</SelectItem>
+                    <SelectItem value="ja">🇯🇵 {t('hud.japanese')}</SelectItem>
                     <SelectItem value="dbg">🐛 {t('hud.debug')}</SelectItem>
                 </SelectContent>
             </Select>

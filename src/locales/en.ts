@@ -116,6 +116,7 @@ export const en = {
     english: "English",
     debug: "Debug",
     ukrainian: "Ukrainian",
+    japanese: "Japanese",
   },
   pieces: {
     King: "King",

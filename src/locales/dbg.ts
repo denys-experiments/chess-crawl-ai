@@ -118,6 +118,7 @@ export const dbg: Locale = {
     english: "!hud.english!",
     debug: "!hud.debug!",
     ukrainian: "!hud.ukrainian!",
+    japanese: "!hud.japanese!",
   },
   pieces: {
     King: "!pieces.King!",
