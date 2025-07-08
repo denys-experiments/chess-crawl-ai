@@ -103,16 +103,6 @@ export function GameHud(props: GameHudProps) {
           <div className="flex justify-between items-center">
             <CardTitle className="font-headline text-3xl">{t('hud.title')}</CardTitle>
             <div className="flex items-center gap-1">
-                <Select value={locale} onValueChange={(v) => setLocale(v as LocaleKey)}>
-                    <SelectTrigger className="w-auto h-8 text-xs gap-1.5 pl-2 pr-1" aria-label={t('hud.language')}>
-                        <Globe className="h-3 w-3" />
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="en">{t('hud.english')}</SelectItem>
-                        <SelectItem value="dbg">{t('hud.debug')}</SelectItem>
-                    </SelectContent>
-                </Select>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowHelp}>
                     <HelpCircle className="h-5 w-5" />
                     <span className="sr-only">{t('hud.howToPlay')}</span>
@@ -120,18 +110,31 @@ export function GameHud(props: GameHudProps) {
                 <Badge variant="secondary" className="text-lg">{t('hud.level', { level })}</Badge>
             </div>
           </div>
-          <CardDescription className="flex items-center gap-2 pt-2">
-              {isEnemyThinking ? (
-                  <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      <span>{t('hud.enemyThinking')}</span>
-                  </>
-              ) : (
-                  <span className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
-                      {getTurnText()}
-                  </span>
-              )}
-          </CardDescription>
+          <div className="flex items-center justify-between pt-2">
+            <CardDescription className="flex items-center gap-2 p-0">
+                {isEnemyThinking ? (
+                    <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>{t('hud.enemyThinking')}</span>
+                    </>
+                ) : (
+                    <span className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
+                        {getTurnText()}
+                    </span>
+                )}
+            </CardDescription>
+
+             <Select value={locale} onValueChange={(v) => setLocale(v as LocaleKey)}>
+                <SelectTrigger className="w-auto h-8 text-xs gap-1.5 pl-2 pr-1" aria-label={t('hud.language')}>
+                    <Globe className="h-3 w-3" />
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="en">🇬🇧 {t('hud.english')}</SelectItem>
+                    <SelectItem value="dbg">🐛 {t('hud.debug')}</SelectItem>
+                </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {selectedPiece && <PieceInfoPanel piece={selectedPiece} />}
