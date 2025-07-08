@@ -77,7 +77,7 @@ export const dbg: Locale = {
     enemyTurn: "!hud.enemyTurn!",
     enemyThinking: "!hud.enemyThinking!",
     pieceInfo: {
-      species: "!hud.pieceInfo.species!",
+      pieceType: "!hud.pieceInfo.pieceType!",
       cosmetic: "!hud.pieceInfo.cosmetic!",
       discovered: "!hud.pieceInfo.discovered!",
       captures: "!hud.pieceInfo.captures!",
@@ -115,5 +115,13 @@ export const dbg: Locale = {
     english: "!hud.english!",
     debug: "!hud.debug!",
     ukrainian: "!hud.ukrainian!",
+  },
+  pieces: {
+    King: "!pieces.King!",
+    Queen: "!pieces.Queen!",
+    Rook: "!pieces.Rook!",
+    Bishop: "!pieces.Bishop!",
+    Knight: "!pieces.Knight!",
+    Pawn: "!pieces.Pawn!",
   },
 };

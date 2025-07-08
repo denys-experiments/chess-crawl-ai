@@ -75,7 +75,7 @@ export const en = {
     enemyTurn: "{faction} Faction's Turn",
     enemyThinking: "Enemy is thinking...",
     pieceInfo: {
-      species: "Species",
+      pieceType: "Piece Type",
       cosmetic: "Cosmetic",
       discovered: "Discovered",
       captures: "Captures",
@@ -113,6 +113,14 @@ export const en = {
     english: "English",
     debug: "Debug",
     ukrainian: "Ukrainian",
+  },
+  pieces: {
+    King: "King",
+    Queen: "Queen",
+    Rook: "Rook",
+    Bishop: "Bishop",
+    Knight: "Knight",
+    Pawn: "Pawn",
   },
 };
 

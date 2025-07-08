@@ -141,7 +141,7 @@ export default function Home() {
               discoveredOnLevel: levelToSetup,
               captures: 0,
             };
-            addToHistory(t('history.allyJoined', { pieceType: newPieceType, name: newPieceName }));
+            addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: newPieceName }));
             checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard, levelToSetup);
           }
         }
@@ -303,8 +303,8 @@ export default function Home() {
             discoveredOnLevel: levelForRescue,
             captures: 0,
           };
-          toast({ title: t('toast.allyRescued'), description: t('toast.allyRescuedDesc', { pieceType: newPieceType }) });
-          addToHistory(t('history.allyJoined', { pieceType: newPieceType, name: newPieceName }));
+          toast({ title: t('toast.allyRescued'), description: t('toast.allyRescuedDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
+          addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: newPieceName }));
           checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
         }
       }
@@ -359,9 +359,9 @@ export default function Home() {
         newPieceState.captures = (newPieceState.captures || 0) + 1;
         eventMessage = t('history.playerCapture', {
             name: pieceToMove.name,
-            piece: pieceToMove.piece,
+            piece: t(`pieces.${pieceToMove.piece}`),
             color: targetTile.color,
-            targetPiece: targetTile.piece,
+            targetPiece: t(`pieces.${targetTile.piece}`),
             x: to.x + 1,
             y: to.y + 1
         });
@@ -375,8 +375,8 @@ export default function Home() {
           piece: newPieceType,
           direction: undefined,
         };
-        toast({ title: t('toast.promotion'), description: t('toast.promotionDesc', { pieceType: newPieceType }) });
-        eventMessage = t('history.playerPromotion', { name: pieceToMove.name, piece: pieceToMove.piece, newPieceType });
+        toast({ title: t('toast.promotion'), description: t('toast.promotionDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
+        eventMessage = t('history.playerPromotion', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), newPieceType: t(`pieces.${newPieceType}`) });
       } else {
         const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
         const cosmeticDisplayNames: { [key: string]: string } = {
@@ -394,11 +394,11 @@ export default function Home() {
         
         newPieceState.cosmetic = newCosmetic;
         const cosmeticName = cosmeticDisplayNames[newCosmetic];
-        toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: pieceToMove.piece, cosmetic: cosmeticName}) });
-        eventMessage = t('history.playerCosmetic', { name: pieceToMove.name, piece: pieceToMove.piece, cosmetic: cosmeticName });
+        toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName}) });
+        eventMessage = t('history.playerCosmetic', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName });
       }
     } else {
-        eventMessage = t('history.playerMove', { name: pieceToMove.name, piece: pieceToMove.piece, x: to.x + 1, y: to.y + 1 });
+        eventMessage = t('history.playerMove', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), x: to.x + 1, y: to.y + 1 });
     }
 
     if (pieceToMove.piece === 'Pawn') {
@@ -481,17 +481,17 @@ export default function Home() {
         reasoning = t('history.enemyCapture', {
             faction: factionColor.charAt(0).toUpperCase() + factionColor.slice(1),
             name: movedPiece.name,
-            piece: movedPiece.piece,
+            piece: t(`pieces.${movedPiece.piece}`),
             x: movedPiece.x + 1,
             y: movedPiece.y + 1,
             targetColor: targetTile.color,
-            targetPiece: targetTile.piece,
+            targetPiece: t(`pieces.${targetTile.piece}`),
         });
     } else {
         reasoning = t('history.enemyMove', {
             faction: factionColor.charAt(0).toUpperCase() + factionColor.slice(1),
             name: movedPiece.name,
-            piece: movedPiece.piece,
+            piece: t(`pieces.${movedPiece.piece}`),
             x: movedPiece.x + 1,
             y: movedPiece.y + 1
         });
@@ -752,7 +752,7 @@ export default function Home() {
         captures: 0,
     };
     setBoard(newBoard);
-    toast({ title: t('toast.cheatActivated'), description: t('toast.pieceCreated', { pieceType }) });
+    toast({ title: t('toast.cheatActivated'), description: t('toast.pieceCreated', { pieceType: t(`pieces.${pieceType}`) }) });
   }
 
   const handlePromotePawn = () => {
@@ -774,7 +774,7 @@ export default function Home() {
             direction: undefined,
         };
         setBoard(newBoard);
-        toast({ title: t('toast.cheatActivated'), description: t('toast.pawnPromoted', { pieceType: newPieceType }) });
+        toast({ title: t('toast.cheatActivated'), description: t('toast.pawnPromoted', { pieceType: t(`pieces.${newPieceType}`) }) });
     }
   }
 
@@ -804,7 +804,7 @@ export default function Home() {
     if(pieceToDecorate?.type === 'piece') {
         (newBoard[randomPiece.y][randomPiece.x] as Piece).cosmetic = newCosmetic;
         setBoard(newBoard);
-        toast({ title: t('toast.cheatActivated'), description: t('toast.cosmeticAwarded', { piece: pieceToDecorate.piece, cosmetic: cosmeticName }) });
+        toast({ title: t('toast.cheatActivated'), description: t('toast.cosmeticAwarded', { piece: t(`pieces.${pieceToDecorate.piece}`), cosmetic: cosmeticName }) });
     }
   }
 
@@ -907,7 +907,7 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                             <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center text-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-transparent hover:border-border'}`}>
                                  <GamePiece piece={piece} size="sm" />
                                  <span className="text-xs font-medium mt-1.5 leading-tight">{piece.name}</span>
-                                 <span className="text-xs text-muted-foreground">({piece.piece})</span>
+                                 <span className="text-xs text-muted-foreground">({t(`pieces.${piece.piece}`)})</span>
                             </div>
                         ))}
                     </div>
@@ -1008,12 +1008,12 @@ function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChan
               <h3 className="font-headline text-lg mb-2 text-primary">{t('howToPlayDialog.pieceMovementsTitle')}</h3>
               <p className="mb-2">{t('howToPlayDialog.pieceMovementsText')}</p>
               <ul className="list-disc list-inside space-y-1">
-                <li><span className="font-semibold">♔ King:</span> {t('howToPlayDialog.kingDesc')}</li>
-                <li><span className="font-semibold">♕ Queen:</span> {t('howToPlayDialog.queenDesc')}</li>
-                <li><span className="font-semibold">♖ Rook:</span> {t('howToPlayDialog.rookDesc')}</li>
-                <li><span className="font-semibold">♗ Bishop:</span> {t('howToPlayDialog.bishopDesc')}</li>
-                <li><span className="font-semibold">♘ Knight:</span> {t('howToPlayDialog.knightDesc')}</li>
-                <li><span className="font-semibold">♙ Pawn:</span> {t('howToPlayDialog.pawnDesc')}
+                <li><span className="font-semibold">♔ {t('pieces.King')}:</span> {t('howToPlayDialog.kingDesc')}</li>
+                <li><span className="font-semibold">♕ {t('pieces.Queen')}:</span> {t('howToPlayDialog.queenDesc')}</li>
+                <li><span className="font-semibold">♖ {t('pieces.Rook')}:</span> {t('howToPlayDialog.rookDesc')}</li>
+                <li><span className="font-semibold">♗ {t('pieces.Bishop')}:</span> {t('howToPlayDialog.bishopDesc')}</li>
+                <li><span className="font-semibold">♘ {t('pieces.Knight')}:</span> {t('howToPlayDialog.knightDesc')}</li>
+                <li><span className="font-semibold">♙ {t('pieces.Pawn')}:</span> {t('howToPlayDialog.pawnDesc')}
                     <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
                         <li>{t('howToPlayDialog.pawnMove1')}</li>
                         <li>{t('howToPlayDialog.pawnMove2')}</li>

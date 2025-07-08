@@ -77,7 +77,7 @@ export const ua: Locale = {
     enemyTurn: "Хід фракції {faction}",
     enemyThinking: "Ворог думає...",
     pieceInfo: {
-      species: "Вид",
+      pieceType: "Тип фігури",
       cosmetic: "Косметика",
       discovered: "Знайдено",
       captures: "Захоплено",
@@ -115,5 +115,13 @@ export const ua: Locale = {
     english: "Англійська",
     debug: "Відладка",
     ukrainian: "Українська",
+  },
+  pieces: {
+    King: "Король",
+    Queen: "Королева",
+    Rook: "Тура",
+    Bishop: "Слон",
+    Knight: "Кінь",
+    Pawn: "Пішак",
   },
 };

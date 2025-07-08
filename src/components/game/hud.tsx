@@ -64,8 +64,8 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
             <div className="p-4 border rounded-lg bg-background/50">
                 <h4 className="font-headline text-lg text-primary text-center mb-3">{piece.name}</h4>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                    <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.species')}</div>
-                    <div className="text-right">{piece.piece}</div>
+                    <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.pieceType')}</div>
+                    <div className="text-right">{t(`pieces.${piece.piece}`)}</div>
                     
                     <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.cosmetic')}</div>
                     <div className="text-right">{cosmeticName}</div>
@@ -248,11 +248,11 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
               <SelectValue placeholder={t('hud.cheatsPanel.selectPiece')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Pawn">Pawn</SelectItem>
-              <SelectItem value="Knight">Knight</SelectItem>
-              <SelectItem value="Bishop">Bishop</SelectItem>
-              <SelectItem value="Rook">Rook</SelectItem>
-              <SelectItem value="Queen">Queen</SelectItem>
+              <SelectItem value="Pawn">{t('pieces.Pawn')}</SelectItem>
+              <SelectItem value="Knight">{t('pieces.Knight')}</SelectItem>
+              <SelectItem value="Bishop">{t('pieces.Bishop')}</SelectItem>
+              <SelectItem value="Rook">{t('pieces.Rook')}</SelectItem>
+              <SelectItem value="Queen">{t('pieces.Queen')}</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={() => onCreatePiece(pieceType)} size="sm">{t('hud.cheatsPanel.create')}</Button>
