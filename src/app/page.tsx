@@ -127,6 +127,23 @@ export default function Home() {
             { type: 'piece', piece: 'Pawn', color: 'white', x: 0, y: 0, id: `wp2-${Date.now()}`, direction: 'up', name: generateRandomName(), discoveredOnLevel: 1, captures: 0 }
         ];
     }
+
+    if (isNewGame) {
+      setHistory([]);
+      addToHistory({ key: 'history.levelStart', values: { level: 1 } });
+    } else {
+      addToHistory({ key: 'history.levelStart', values: { level: levelToSetup } });
+      const carriedOverPieces = piecesToCarry.filter(p => p.piece !== 'King');
+      carriedOverPieces.forEach(piece => {
+        addToHistory({
+          key: 'history.pieceCarriedOver',
+          values: {
+            name: piece.name,
+            pieceKey: `pieces.${piece.piece}`
+          }
+        });
+      });
+    }
     
     setLevel(levelToSetup);
     
@@ -174,9 +191,7 @@ export default function Home() {
     
     setBoard(newBoard);
     setCurrentTurn('player');
-    if (isNewGame) {
-      setHistory([]);
-    }
+    
     setIsLevelComplete(false);
     setSelectedPiece(null);
 
@@ -333,7 +348,7 @@ export default function Home() {
         }
       }
     });
-  }, [toast, addToHistory, t, getPieceDisplayName]);
+  }, [toast, addToHistory, t]);
 
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
@@ -386,7 +401,7 @@ export default function Home() {
             values: {
                 name: pieceToMove.name,
                 pieceKey: `pieces.${pieceToMove.piece}`,
-                color: targetTile.color,
+                factionKey: `factions.${targetTile.color}`,
                 targetPieceKey: `pieces.${targetTile.piece}`,
                 x: to.x + 1,
                 y: to.y + 1,
@@ -519,18 +534,34 @@ export default function Home() {
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
     let historyEntry: HistoryEntry;
     if (targetTile?.type === 'piece') {
-        historyEntry = {
-            key: 'history.enemyCapture',
-            values: {
-                factionKey: `factions.${factionColor}`,
-                name: movedPiece.name,
-                pieceKey: `pieces.${movedPiece.piece}`,
-                x: movedPiece.x + 1,
-                y: movedPiece.y + 1,
-                targetColor: targetTile.color,
-                targetPieceKey: `pieces.${targetTile.piece}`,
-            },
-        };
+        if (targetTile.color === 'white') {
+            const hasCosmetic = !!targetTile.cosmetic;
+            historyEntry = {
+                key: hasCosmetic ? 'history.playerPieceCaptured_cosmetic' : 'history.playerPieceCaptured',
+                values: {
+                    name: targetTile.name,
+                    pieceKey: `pieces.${targetTile.piece}`,
+                    discoveredOnLevel: targetTile.discoveredOnLevel,
+                    captures: targetTile.captures || 0,
+                    ...(hasCosmetic && { cosmeticKey: `cosmetics.${targetTile.cosmetic}` }),
+                    factionKey: `factions.${factionColor}`,
+                    enemyPieceKey: `pieces.${movedPiece.piece}`
+                }
+            };
+        } else {
+            historyEntry = {
+                key: 'history.enemyCapture',
+                values: {
+                    factionKey: `factions.${factionColor}`,
+                    name: movedPiece.name,
+                    pieceKey: `pieces.${movedPiece.piece}`,
+                    x: movedPiece.x + 1,
+                    y: movedPiece.y + 1,
+                    targetFactionKey: `factions.${targetTile.color}`,
+                    targetPieceKey: `pieces.${targetTile.piece}`,
+                },
+            };
+        }
     } else {
         historyEntry = {
             key: 'history.enemyMove',

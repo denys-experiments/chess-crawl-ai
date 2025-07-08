@@ -68,6 +68,10 @@ export const dbg: Locale = {
     enemyMove: "!history.enemyMove!",
     enemyCapture: "!history.enemyCapture!",
     enemyNoMoves: "!history.enemyNoMoves!",
+    levelStart: "!history.levelStart!",
+    pieceCarriedOver: "!history.pieceCarriedOver!",
+    playerPieceCaptured: "!history.playerPieceCaptured!",
+    playerPieceCaptured_cosmetic: "!history.playerPieceCaptured_cosmetic!",
   },
   hud: {
     title: "!hud.title!",
