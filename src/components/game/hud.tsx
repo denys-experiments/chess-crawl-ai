@@ -4,7 +4,7 @@ import type { Piece, PieceType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown, RotateCcw, HelpCircle } from 'lucide-react';
+import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown, RotateCcw, HelpCircle, Globe } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -32,6 +32,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useTranslation } from '@/context/i18n';
+import type { LocaleKey } from '@/context/i18n';
 
 
 interface GameHudProps {
@@ -52,25 +54,26 @@ interface GameHudProps {
 }
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
+    const { t } = useTranslation();
     const cosmeticName = piece.cosmetic
         ? piece.cosmetic.charAt(0).toUpperCase() + piece.cosmetic.slice(1)
-        : 'None';
+        : t('hud.pieceInfo.cosmeticNone');
 
     return (
         <div className="space-y-3 mb-6">
             <div className="p-4 border rounded-lg bg-background/50">
                 <h4 className="font-headline text-lg text-primary text-center mb-3">{piece.name}</h4>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                    <div className="font-semibold text-muted-foreground">Species</div>
+                    <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.species')}</div>
                     <div className="text-right">{piece.piece}</div>
                     
-                    <div className="font-semibold text-muted-foreground">Cosmetic</div>
+                    <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.cosmetic')}</div>
                     <div className="text-right">{cosmeticName}</div>
 
-                    <div className="font-semibold text-muted-foreground">Discovered</div>
-                    <div className="text-right">Level {piece.discoveredOnLevel}</div>
+                    <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.discovered')}</div>
+                    <div className="text-right">{t('hud.pieceInfo.discoveredOn', { level: piece.discoveredOnLevel })}</div>
 
-                    <div className="font-semibold text-muted-foreground">Captures</div>
+                    <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.captures')}</div>
                     <div className="text-right">{piece.captures}</div>
                 </div>
             </div>
@@ -81,14 +84,16 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
 
 export function GameHud(props: GameHudProps) {
   const { currentTurn, level, inventory, history, isEnemyThinking, selectedPiece, onRestart, onShowHelp } = props;
+  const { t, locale, setLocale } = useTranslation();
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const getTurnText = () => {
     if (currentTurn === 'player') {
-      return "Player's Turn";
+      return t('hud.playerTurn');
     }
-    return `${currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1)} Faction's Turn`;
+    const factionName = currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1);
+    return t('hud.enemyTurn', { faction: factionName });
   };
 
   return (
@@ -96,20 +101,30 @@ export function GameHud(props: GameHudProps) {
       <Card className="w-full md:w-96 md:max-w-sm flex-shrink-0 bg-card/50 backdrop-blur-sm border-primary/30">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle className="font-headline text-3xl">Chess Crawl</CardTitle>
+            <CardTitle className="font-headline text-3xl">{t('hud.title')}</CardTitle>
             <div className="flex items-center gap-1">
+                <Select value={locale} onValueChange={(v) => setLocale(v as LocaleKey)}>
+                    <SelectTrigger className="w-auto h-8 text-xs gap-1.5 pl-2 pr-1" aria-label={t('hud.language')}>
+                        <Globe className="h-3 w-3" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="en">{t('hud.english')}</SelectItem>
+                        <SelectItem value="dbg">{t('hud.debug')}</SelectItem>
+                    </SelectContent>
+                </Select>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowHelp}>
                     <HelpCircle className="h-5 w-5" />
-                    <span className="sr-only">How to Play</span>
+                    <span className="sr-only">{t('hud.howToPlay')}</span>
                 </Button>
-                <Badge variant="secondary" className="text-lg">Level {level}</Badge>
+                <Badge variant="secondary" className="text-lg">{t('hud.level', { level })}</Badge>
             </div>
           </div>
           <CardDescription className="flex items-center gap-2 pt-2">
               {isEnemyThinking ? (
                   <>
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      <span>Enemy is thinking...</span>
+                      <span>{t('hud.enemyThinking')}</span>
                   </>
               ) : (
                   <span className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
@@ -121,22 +136,22 @@ export function GameHud(props: GameHudProps) {
         <CardContent className="space-y-6">
           {selectedPiece && <PieceInfoPanel piece={selectedPiece} />}
           <div>
-            <h4 className="font-headline text-lg mb-2 text-primary">Inventory</h4>
+            <h4 className="font-headline text-lg mb-2 text-primary">{t('hud.inventory')}</h4>
             <div className="flex items-center gap-4">
                <div className="flex items-center gap-2">
                   <PawPrint className="w-5 h-5 text-muted-foreground" />
-                  <span>Allies: {inventory.pieces.length}</span>
+                  <span>{t('hud.allies', { count: inventory.pieces.length })}</span>
                </div>
                <div className="flex items-center gap-2">
                   <Glasses className="w-5 h-5 text-muted-foreground" />
-                  <span>Cosmetics: {inventory.cosmetics.length}</span>
+                  <span>{t('hud.cosmetics', { count: inventory.cosmetics.length })}</span>
                </div>
             </div>
           </div>
           <div>
-              <h4 className="font-headline text-lg mb-2 text-primary">History</h4>
+              <h4 className="font-headline text-lg mb-2 text-primary">{t('hud.history')}</h4>
               <ScrollArea className="h-48 w-full rounded-md border bg-background/50 p-4">
-                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{history.join('\n') || 'Level history will appear here...'}</pre>
+                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{history.join('\n') || t('hud.historyPlaceholder')}</pre>
               </ScrollArea>
           </div>
           
@@ -144,7 +159,7 @@ export function GameHud(props: GameHudProps) {
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full">
                 <Wand2 className="mr-2 h-4 w-4" />
-                <span>Cheats</span>
+                <span>{t('hud.cheats')}</span>
                 <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </CollapsibleTrigger>
@@ -155,7 +170,7 @@ export function GameHud(props: GameHudProps) {
           
           <Button variant="outline" className="w-full border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => setIsResetDialogOpen(true)}>
             <RotateCcw className="mr-2 h-4 w-4" />
-            Restart Game
+            {t('hud.restartGame')}
           </Button>
 
         </CardContent>
@@ -164,15 +179,15 @@ export function GameHud(props: GameHudProps) {
       <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('hud.resetDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. All of your progress will be lost, and the game will restart from Level 1.
+              {t('hud.resetDialog.description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('hud.resetDialog.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={onRestart} className={buttonVariants({ variant: "destructive" })}>
-              Restart
+              {t('hud.resetDialog.restart')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -189,6 +204,7 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
   onWinLevel: () => void;
   debugLog: string;
 }) {
+  const { t } = useTranslation();
   const [width, setWidth] = useState('8');
   const [height, setHeight] = useState('8');
   const [numFactions, setNumFactions] = useState('1');
@@ -206,26 +222,26 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
 
   return (
     <div className="space-y-4">
-       <h4 className="font-headline text-lg text-primary">Cheat Panel</h4>
+       <h4 className="font-headline text-lg text-primary">{t('hud.cheatsPanel.title')}</h4>
       <div className="space-y-2">
-        <Label htmlFor="width-input">Regenerate Level</Label>
+        <Label htmlFor="width-input">{t('hud.cheatsPanel.regenerateLevel')}</Label>
         <div className="flex gap-2 items-center flex-wrap">
           <Input id="width-input" type="number" value={width} onChange={e => setWidth(e.target.value)} className="w-16" />
           <span className="text-muted-foreground">x</span>
           <Input type="number" value={height} onChange={e => setHeight(e.target.value)} className="w-16" />
           <div className="flex items-center gap-2">
-            <Label htmlFor="factions-input" className="text-muted-foreground">Factions:</Label>
+            <Label htmlFor="factions-input" className="text-muted-foreground">{t('hud.cheatsPanel.factions')}</Label>
             <Input id="factions-input" type="number" value={numFactions} onChange={e => setNumFactions(e.target.value)} className="w-14" />
           </div>
-          <Button onClick={handleRegenerate} size="sm">Go</Button>
+          <Button onClick={handleRegenerate} size="sm">{t('hud.cheatsPanel.go')}</Button>
         </div>
       </div>
       <div className="space-y-2">
-        <Label>Create Piece</Label>
+        <Label>{t('hud.cheatsPanel.createPiece')}</Label>
         <div className="flex gap-2">
           <Select value={pieceType} onValueChange={(v) => setPieceType(v as PieceType)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select piece" />
+              <SelectValue placeholder={t('hud.cheatsPanel.selectPiece')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Pawn">Pawn</SelectItem>
@@ -235,22 +251,22 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
               <SelectItem value="Queen">Queen</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => onCreatePiece(pieceType)} size="sm">Create</Button>
+          <Button onClick={() => onCreatePiece(pieceType)} size="sm">{t('hud.cheatsPanel.create')}</Button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Button onClick={onWinLevel} variant="outline" size="sm">Win Level</Button>
-        <Button onClick={onPromotePawn} variant="outline" size="sm">Promote Pawn</Button>
-        <Button onClick={onAwardCosmetic} variant="outline" size="sm">Award Cosmetic</Button>
+        <Button onClick={onWinLevel} variant="outline" size="sm">{t('hud.cheatsPanel.winLevel')}</Button>
+        <Button onClick={onPromotePawn} variant="outline" size="sm">{t('hud.cheatsPanel.promotePawn')}</Button>
+        <Button onClick={onAwardCosmetic} variant="outline" size="sm">{t('hud.cheatsPanel.awardCosmetic')}</Button>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="debug-output">Debug Log</Label>
+        <Label htmlFor="debug-output">{t('hud.cheatsPanel.debugLog')}</Label>
         <Textarea
           id="debug-output"
           readOnly
           value={debugLog}
           className="h-48 font-mono text-xs bg-background/50"
-          placeholder="Debug output will appear here..."
+          placeholder={t('hud.cheatsPanel.debugPlaceholder')}
         />
       </div>
     </div>

@@ -19,10 +19,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { GamePiece } from '@/components/game/piece';
 import { Loader2 } from 'lucide-react';
-import { Toaster } from '@/components/ui/toaster';
 import { generateRandomName } from '@/lib/names';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useTranslation } from '@/context/i18n';
 
 const SAVE_GAME_KEY = 'chess-crawl-save-game';
 
@@ -91,6 +91,7 @@ export default function Home() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const { toast } = useToast();
+  const { t } = useTranslation();
   
   const appendToDebugLog = useCallback((message: string) => {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
@@ -140,7 +141,7 @@ export default function Home() {
               discoveredOnLevel: levelToSetup,
               captures: 0,
             };
-            addToHistory(`A friendly ${newPieceType} (${newPieceName}) has woken up and joined your party!`);
+            addToHistory(t('history.allyJoined', { pieceType: newPieceType, name: newPieceName }));
             checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard, levelToSetup);
           }
         }
@@ -178,7 +179,7 @@ export default function Home() {
     appendToDebugLog(log);
     
     setIsLoading(false);
-  }, [appendToDebugLog, addToHistory]);
+  }, [appendToDebugLog, addToHistory, t]);
   
   useEffect(() => {
     const savedGame = localStorage.getItem(SAVE_GAME_KEY);
@@ -302,13 +303,13 @@ export default function Home() {
             discoveredOnLevel: levelForRescue,
             captures: 0,
           };
-          toast({ title: "Ally Rescued!", description: `A friendly ${newPieceType} woke up!` });
-          addToHistory(`A friendly ${newPieceType} (${newPieceName}) has woken up and joined your party!`);
+          toast({ title: t('toast.allyRescued'), description: t('toast.allyRescuedDesc', { pieceType: newPieceType }) });
+          addToHistory(t('history.allyJoined', { pieceType: newPieceType, name: newPieceName }));
           checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
         }
       }
     });
-  }, [toast, addToHistory]);
+  }, [toast, addToHistory, t]);
 
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
@@ -356,7 +357,14 @@ export default function Home() {
     
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
         newPieceState.captures = (newPieceState.captures || 0) + 1;
-        eventMessage = `Player's ${pieceToMove.name} (${pieceToMove.piece}) captures a ${targetTile.color} ${targetTile.piece} at (${to.x + 1}, ${to.y + 1}).`;
+        eventMessage = t('history.playerCapture', {
+            name: pieceToMove.name,
+            piece: pieceToMove.piece,
+            color: targetTile.color,
+            targetPiece: targetTile.piece,
+            x: to.x + 1,
+            y: to.y + 1
+        });
     } else if (targetTile?.type === 'chest') {
       const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
       if (pieceToMove.piece === 'Pawn') {
@@ -367,8 +375,8 @@ export default function Home() {
           piece: newPieceType,
           direction: undefined,
         };
-        toast({ title: "Promotion!", description: `Your Pawn promoted to a ${newPieceType}!` });
-        eventMessage = `${pieceToMove.name} (${pieceToMove.piece}) opened a chest and promoted to a ${newPieceType}!`;
+        toast({ title: t('toast.promotion'), description: t('toast.promotionDesc', { pieceType: newPieceType }) });
+        eventMessage = t('history.playerPromotion', { name: pieceToMove.name, piece: pieceToMove.piece, newPieceType });
       } else {
         const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
         const cosmeticDisplayNames: { [key: string]: string } = {
@@ -385,12 +393,12 @@ export default function Home() {
         setInventory(prev => ({...prev, cosmetics: [...existingCosmetics, newCosmetic]}));
         
         newPieceState.cosmetic = newCosmetic;
-
-        toast({ title: "Chest Opened!", description: `Your ${pieceToMove.piece} found ${cosmeticDisplayNames[newCosmetic]}!` });
-        eventMessage = `${pieceToMove.name} (${pieceToMove.piece}) opened a chest and found ${cosmeticDisplayNames[newCosmetic]}.`;
+        const cosmeticName = cosmeticDisplayNames[newCosmetic];
+        toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: pieceToMove.piece, cosmetic: cosmeticName}) });
+        eventMessage = t('history.playerCosmetic', { name: pieceToMove.name, piece: pieceToMove.piece, cosmetic: cosmeticName });
       }
     } else {
-        eventMessage = `Player's ${pieceToMove.name} (${pieceToMove.piece}) moves to (${to.x + 1}, ${to.y + 1}).`;
+        eventMessage = t('history.playerMove', { name: pieceToMove.name, piece: pieceToMove.piece, x: to.x + 1, y: to.y + 1 });
     }
 
     if (pieceToMove.piece === 'Pawn') {
@@ -428,7 +436,7 @@ export default function Home() {
         advanceTurn();
         onComplete();
     }, 300);
-  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory]);
+  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
@@ -468,15 +476,31 @@ export default function Home() {
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece, isPlayerMoving]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
-    let reasoning = `${factionColor.charAt(0).toUpperCase() + factionColor.slice(1)} faction's ${movedPiece.name} (${movedPiece.piece}) moves to (${movedPiece.x + 1}, ${movedPiece.y + 1}).`;
+    let reasoning = '';
     if (targetTile?.type === 'piece') {
-        reasoning += ` Capturing a ${targetTile.color} ${targetTile.piece}.`;
+        reasoning = t('history.enemyCapture', {
+            faction: factionColor.charAt(0).toUpperCase() + factionColor.slice(1),
+            name: movedPiece.name,
+            piece: movedPiece.piece,
+            x: movedPiece.x + 1,
+            y: movedPiece.y + 1,
+            targetColor: targetTile.color,
+            targetPiece: targetTile.piece,
+        });
+    } else {
+        reasoning = t('history.enemyMove', {
+            faction: factionColor.charAt(0).toUpperCase() + factionColor.slice(1),
+            name: movedPiece.name,
+            piece: movedPiece.piece,
+            x: movedPiece.x + 1,
+            y: movedPiece.y + 1
+        });
     }
     
     addToHistory(reasoning);
     setIsEnemyThinking(false);
     advanceTurn();
-  }, [advanceTurn, addToHistory]);
+  }, [advanceTurn, addToHistory, t]);
 
   const runEnemyTurn = useCallback((factionColor: string) => {
     if (!board) return;
@@ -565,7 +589,8 @@ export default function Home() {
     }
     
     if (allPossibleMoves.length === 0) {
-        addToHistory(`The ${factionColor} faction has no available moves.`);
+        const factionName = factionColor.charAt(0).toUpperCase() + factionColor.slice(1);
+        addToHistory(t('history.enemyNoMoves', { faction: factionName }));
         setIsEnemyThinking(false);
         advanceTurn();
         return;
@@ -613,7 +638,7 @@ export default function Home() {
     setTimeout(() => {
         finishEnemyTurn(factionColor, newPieceState, targetTile);
     }, 300);
-  }, [board, advanceTurn, finishEnemyTurn, addToHistory]);
+  }, [board, advanceTurn, finishEnemyTurn, addToHistory, t]);
 
 
   useEffect(() => {
@@ -685,19 +710,19 @@ export default function Home() {
     setHistory([]);
     setIsLevelComplete(false);
     setIsGameOver(false);
-    toast({ title: "Cheat Activated!", description: `Level regenerated to ${width}x${height} with ${factions.length} faction(s).` });
+    toast({ title: t('toast.cheatActivated'), description: t('toast.levelRegenerated', { width, height, factions: factions.length }) });
   }
 
   const handleWinLevel = () => {
     setIsLevelComplete(true);
-    toast({ title: "Cheat Activated!", description: "You've won the level!" });
+    toast({ title: t('toast.cheatActivated'), description: t('toast.levelWon') });
   }
 
   const handleCreatePiece = (pieceType: PieceType) => {
     if (!board) return;
     const king = playerPieces.find(p => p.piece === 'King');
     if (!king) {
-        toast({ title: "Cheat Failed", description: "Player King not found.", variant: "destructive" });
+        toast({ title: t('toast.cheatFailed'), description: t('toast.kingNotFound'), variant: "destructive" });
         return;
     }
     const { x: kingX, y: kingY } = king;
@@ -709,7 +734,7 @@ export default function Home() {
     ].filter(p => isWithinBoard(p.x, p.y, board) && !board[p.y][p.x]);
 
     if (possibleSpawns.length === 0) {
-        toast({ title: "Cheat Failed", description: "No empty space near the King to spawn a piece.", variant: "destructive" });
+        toast({ title: t('toast.cheatFailed'), description: t('toast.noEmptySpace'), variant: "destructive" });
         return;
     }
 
@@ -727,14 +752,14 @@ export default function Home() {
         captures: 0,
     };
     setBoard(newBoard);
-    toast({ title: "Cheat Activated!", description: `A friendly ${pieceType} has appeared.` });
+    toast({ title: t('toast.cheatActivated'), description: t('toast.pieceCreated', { pieceType }) });
   }
 
   const handlePromotePawn = () => {
     if (!board) return;
     const pawns = playerPieces.filter(p => p.piece === 'Pawn');
     if (pawns.length === 0) {
-        toast({ title: "Cheat Failed", description: "No player pawns available to promote.", variant: "destructive" });
+        toast({ title: t('toast.cheatFailed'), description: t('toast.noPawnsToPromote'), variant: "destructive" });
         return;
     }
     const randomPawn = pawns[Math.floor(Math.random() * pawns.length)];
@@ -749,7 +774,7 @@ export default function Home() {
             direction: undefined,
         };
         setBoard(newBoard);
-        toast({ title: "Cheat Activated!", description: `A pawn has been promoted to a ${newPieceType}.` });
+        toast({ title: t('toast.cheatActivated'), description: t('toast.pawnPromoted', { pieceType: newPieceType }) });
     }
   }
 
@@ -757,7 +782,7 @@ export default function Home() {
     if (!board) return;
     const nonPawns = playerPieces.filter(p => p.piece !== 'Pawn');
     if (nonPawns.length === 0) {
-        toast({ title: "Cheat Failed", description: "No non-pawn pieces available to award cosmetic.", variant: "destructive" });
+        toast({ title: t('toast.cheatFailed'), description: t('toast.noPiecesToDecorate'), variant: "destructive" });
         return;
     }
     const randomPiece = nonPawns[Math.floor(Math.random() * nonPawns.length)];
@@ -772,13 +797,14 @@ export default function Home() {
         star: 'a star',
     };
     const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
+    const cosmeticName = cosmeticDisplayNames[newCosmetic];
 
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     const pieceToDecorate = newBoard[randomPiece.y][randomPiece.x];
     if(pieceToDecorate?.type === 'piece') {
         (newBoard[randomPiece.y][randomPiece.x] as Piece).cosmetic = newCosmetic;
         setBoard(newBoard);
-        toast({ title: "Cheat Activated!", description: `Your ${pieceToDecorate.piece} received ${cosmeticDisplayNames[newCosmetic]}.` });
+        toast({ title: t('toast.cheatActivated'), description: t('toast.cosmeticAwarded', { piece: pieceToDecorate.piece, cosmetic: cosmeticName }) });
     }
   }
 
@@ -820,7 +846,6 @@ export default function Home() {
           onShowHelp={() => setIsHelpOpen(true)}
         />
       </div>
-      <Toaster />
       <LevelCompleteDialog 
         isOpen={isLevelComplete}
         level={level}
@@ -841,6 +866,7 @@ export default function Home() {
 
 function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isOpen: boolean; level: number; playerPieces: Piece[]; onNextLevel: (pieces: Piece[]) => void; }) {
     const [selectedPieces, setSelectedPieces] = useState<Piece[]>([]);
+    const { t } = useTranslation();
     const maxCarryOver = Math.floor(level / 2) + 1;
     const selectablePieces = playerPieces.filter(p => p.piece !== 'King');
 
@@ -870,9 +896,9 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
         <Dialog open={isOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Level {level} Complete!</DialogTitle>
+                    <DialogTitle>{t('levelCompleteDialog.title', { level })}</DialogTitle>
                     <DialogDescription>
-                        Congratulations! Your King is automatically carried over. Select up to {maxCarryOver} additional pieces to bring to the next level.
+                        {t('levelCompleteDialog.description', { maxCarryOver })}
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="h-[40vh] pr-6">
@@ -888,7 +914,7 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                 </ScrollArea>
                 <DialogFooter>
                     <Button onClick={handleConfirm} disabled={selectedPieces.length > maxCarryOver}>
-                       Start Level {level + 1} ({selectedPieces.length}/{maxCarryOver} selected)
+                       {t('levelCompleteDialog.button', { levelPlus1: level + 1, selected: selectedPieces.length, max: maxCarryOver })}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -897,17 +923,18 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
 }
 
 function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () => void; }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={isOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Game Over</DialogTitle>
+          <DialogTitle>{t('gameOverDialog.title')}</DialogTitle>
           <DialogDescription>
-            Your King has been defeated. Better luck next time!
+            {t('gameOverDialog.description')}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button onClick={onRestart}>Play Again</Button>
+          <Button onClick={onRestart}>{t('gameOverDialog.button')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -915,31 +942,32 @@ function GameOverDialog({ isOpen, onRestart }: { isOpen: boolean; onRestart: () 
 }
 
 function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (isOpen: boolean) => void; }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>How to Play Chess Crawl</DialogTitle>
+          <DialogTitle>{t('howToPlayDialog.title')}</DialogTitle>
           <DialogDescription>
-            A simple guide to your dungeon-crawling adventure.
+            {t('howToPlayDialog.description')}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] pr-6">
           <div className="space-y-6 text-sm">
             <div>
-              <h3 className="font-headline text-lg mb-2 text-primary">The Goal</h3>
+              <h3 className="font-headline text-lg mb-2 text-primary">{t('howToPlayDialog.goalTitle')}</h3>
               <p>
-                Your goal is simple: survive and conquer. In each level, you must defeat all the enemy pieces on the board. Your own King must survive. If your King is captured, it's game over!
+                {t('howToPlayDialog.goalText')}
               </p>
             </div>
             
             <Separator />
 
             <div>
-              <h3 className="font-headline text-lg mb-2 text-primary">Your Turn</h3>
+              <h3 className="font-headline text-lg mb-2 text-primary">{t('howToPlayDialog.yourTurnTitle')}</h3>
               <div className="grid md:grid-cols-2 gap-4 items-center">
                 <p>
-                  To move a piece, first click on one of your pieces (they're the white ones). This will highlight its available moves. Then, click on one of the highlighted squares to move there. If your King is under attack, it will glow red. Be careful—moves that would keep your King in danger will also be highlighted in red!
+                  {t('howToPlayDialog.yourTurnText')}
                 </p>
                 <Image src="https://placehold.co/400x250.png" alt="Selecting a piece and its available moves" width={400} height={250} className="rounded-md" data-ai-hint="game board" />
               </div>
@@ -948,26 +976,26 @@ function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChan
             <Separator />
             
             <div>
-                <h3 className="font-headline text-lg mb-2 text-primary">Board Objects</h3>
+                <h3 className="font-headline text-lg mb-2 text-primary">{t('howToPlayDialog.boardObjectsTitle')}</h3>
                 <div className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4 items-center">
                          <div>
-                            <h4 className="font-semibold mb-1">Sleeping Allies</h4>
-                            <p>These are friendly pieces waiting to be rescued! You can't move onto their square. To wake them up, just move one of your pieces to any square directly adjacent to them. They will join your party immediately.</p>
+                            <h4 className="font-semibold mb-1">{t('howToPlayDialog.sleepingAlliesTitle')}</h4>
+                            <p>{t('howToPlayDialog.sleepingAlliesText')}</p>
                         </div>
                         <Image src="https://placehold.co/400x250.png" alt="A player piece next to a sleeping ally" width={400} height={250} className="rounded-md" data-ai-hint="chess piece" />
                     </div>
                     <div className="grid md:grid-cols-2 gap-4 items-center">
                         <div>
-                            <h4 className="font-semibold mb-1">Chests</h4>
-                            <p>Move onto a chest to open it. If a Pawn opens a chest, it gets promoted to a stronger piece! Any other piece will find a cool cosmetic item, like sunglasses or a top hat.</p>
+                            <h4 className="font-semibold mb-1">{t('howToPlayDialog.chestsTitle')}</h4>
+                            <p>{t('howToPlayDialog.chestsText')}</p>
                         </div>
                          <Image src="https://placehold.co/400x250.png" alt="A piece opening a chest" width={400} height={250} className="rounded-md" data-ai-hint="treasure chest" />
                     </div>
                      <div className="grid md:grid-cols-2 gap-4 items-center">
                          <div>
-                            <h4 className="font-semibold mb-1">Walls</h4>
-                            <p>These are impassable stone walls. No piece can move through or onto them. Use them to your advantage!</p>
+                            <h4 className="font-semibold mb-1">{t('howToPlayDialog.wallsTitle')}</h4>
+                            <p>{t('howToPlayDialog.wallsText')}</p>
                         </div>
                         <Image src="https://placehold.co/400x250.png" alt="Walls on the game board" width={400} height={250} className="rounded-md" data-ai-hint="stone wall" />
                     </div>
@@ -977,20 +1005,20 @@ function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChan
             <Separator />
 
             <div>
-              <h3 className="font-headline text-lg mb-2 text-primary">Piece Movements</h3>
-              <p className="mb-2">Pieces move like in chess, but with a roguelike twist!</p>
+              <h3 className="font-headline text-lg mb-2 text-primary">{t('howToPlayDialog.pieceMovementsTitle')}</h3>
+              <p className="mb-2">{t('howToPlayDialog.pieceMovementsText')}</p>
               <ul className="list-disc list-inside space-y-1">
-                <li><span className="font-semibold">♔ King:</span> Moves one square in any direction. The most important piece!</li>
-                <li><span className="font-semibold">♕ Queen:</span> Moves any number of squares in any direction (horizontally, vertically, or diagonally).</li>
-                <li><span className="font-semibold">♖ Rook:</span> Moves any number of squares horizontally or vertically.</li>
-                <li><span className="font-semibold">♗ Bishop:</span> Moves any number of squares diagonally.</li>
-                <li><span className="font-semibold">♘ Knight:</span> Moves in an "L" shape: two squares in one direction (horizontal or vertical), then one square perpendicular. It can jump over other pieces.</li>
-                <li><span className="font-semibold">♙ Pawn:</span> This one is special!
+                <li><span className="font-semibold">♔ King:</span> {t('howToPlayDialog.kingDesc')}</li>
+                <li><span className="font-semibold">♕ Queen:</span> {t('howToPlayDialog.queenDesc')}</li>
+                <li><span className="font-semibold">♖ Rook:</span> {t('howToPlayDialog.rookDesc')}</li>
+                <li><span className="font-semibold">♗ Bishop:</span> {t('howToPlayDialog.bishopDesc')}</li>
+                <li><span className="font-semibold">♘ Knight:</span> {t('howToPlayDialog.knightDesc')}</li>
+                <li><span className="font-semibold">♙ Pawn:</span> {t('howToPlayDialog.pawnDesc')}
                     <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
-                        <li>Moves one square forward in its current direction.</li>
-                        <li>Captures diagonally forward.</li>
-                        <li>If it is adjacent to an obstacle (like a wall or another piece), it can "ricochet" and move one square directly away from it.</li>
-                        <li>Its forward direction changes to match any non-diagonal move it makes.</li>
+                        <li>{t('howToPlayDialog.pawnMove1')}</li>
+                        <li>{t('howToPlayDialog.pawnMove2')}</li>
+                        <li>{t('howToPlayDialog.pawnMove3')}</li>
+                        <li>{t('howToPlayDialog.pawnMove4')}</li>
                     </ul>
                 </li>
               </ul>
@@ -998,7 +1026,7 @@ function HowToPlayDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChan
           </div>
         </ScrollArea>
         <DialogFooter>
-            <Button onClick={() => onOpenChange(false)}>Got it!</Button>
+            <Button onClick={() => onOpenChange(false)}>{t('howToPlayDialog.closeButton')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
