@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import type { Piece, PieceType } from '@/types';
+import { useState, useCallback, useMemo } from 'react';
+import type { Piece, PieceType, HistoryEntry, HistoryLogEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,7 @@ interface GameHudProps {
   currentTurn: string;
   level: number;
   inventory: { pieces: Piece[], cosmetics: string[] };
-  history: string[];
+  history: HistoryEntry[];
   isEnemyThinking: boolean;
   selectedPiece: Piece | null;
   onRegenerateLevel: (width: number, height: number, numFactions: number) => void;
@@ -108,6 +108,44 @@ export function GameHud(props: GameHudProps) {
     }
     return t('hud.enemyTurn', { faction: t(`factions.${currentTurn}`) });
   };
+  
+  const getPieceDisplayName = useCallback((name: Piece['name']) => {
+    if (typeof name === 'string') {
+        return name; // For backward compatibility with old saves
+    }
+    if (name) {
+        const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
+        const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
+        return `${firstName} ${lastName}`;
+    }
+    return t('pieces.Unnamed');
+  }, [t]);
+
+  const renderedHistory = useMemo(() => {
+    return history.map((entry) => {
+        if (typeof entry === 'string') {
+            return entry; // Old format, render as-is
+        }
+
+        const historyEntry = entry as HistoryLogEntry;
+        const { key: entryKey, values: entryValues } = historyEntry;
+        const translatedValues: Record<string, string | number> = {};
+
+        for (const valueKey in entryValues) {
+            const rawValue = entryValues[valueKey];
+            if (valueKey.endsWith('Key')) {
+                const newKey = valueKey.slice(0, -3); // remove 'Key' suffix
+                translatedValues[newKey] = t(rawValue as string);
+            } else if (valueKey === 'name') {
+                translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
+            } else {
+                translatedValues[valueKey] = rawValue as string | number;
+            }
+        }
+        return t(entryKey, translatedValues);
+    }).join('\n');
+  }, [history, t, getPieceDisplayName]);
+
 
   return (
     <>
@@ -168,7 +206,7 @@ export function GameHud(props: GameHudProps) {
           <div>
               <h4 className="font-headline text-lg mb-2 text-primary">{t('hud.history')}</h4>
               <ScrollArea className="h-48 w-full rounded-md border bg-background/50 p-4">
-                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{history.join('\n') || t('hud.historyPlaceholder')}</pre>
+                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-code">{renderedHistory || t('hud.historyPlaceholder')}</pre>
               </ScrollArea>
           </div>
           

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { Piece, Board, Position, PieceType, Tile, AvailableMove } from '@/types';
+import type { Piece, Board, Position, PieceType, Tile, AvailableMove, HistoryEntry } from '@/types';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
 import { initializeBoard, getValidMoves, isWithinBoard, isSquareAttackedBy } from '@/lib/game-logic';
@@ -78,7 +78,7 @@ export default function Home() {
   const [playerPieces, setPlayerPieces] = useState<Piece[]>([]);
   const [enemyPieces, setEnemyPieces] = useState<Piece[]>([]);
   const [inventory, setInventory] = useState<{ pieces: Piece[], cosmetics: string[] }>({ pieces: [], cosmetics: [] });
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLevelComplete, setIsLevelComplete] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,8 +109,8 @@ export default function Home() {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
   }, []);
 
-  const addToHistory = useCallback((message: string) => {
-    setHistory(prev => [message, ...prev].slice(0, 50));
+  const addToHistory = useCallback((entry: HistoryEntry) => {
+    setHistory(prev => [entry, ...prev].slice(0, 50));
   }, []);
 
   const setupLevel = useCallback((levelToSetup: number, piecesToCarry: Piece[]) => {
@@ -132,7 +132,7 @@ export default function Home() {
     
     const { board: newBoard } = initializeBoard(levelToSetup, finalPieces);
     
-    const checkForAllyRescueOnSetup = (pos: Position, currentBoard: Board) => {
+    const checkForAllyRescueOnSetup = (pos: Position, currentBoard: Board, levelForRescue: number) => {
       const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
       directions.forEach(([dx, dy]) => {
         const nx = pos.x + dx;
@@ -150,12 +150,17 @@ export default function Home() {
               y: ny,
               id: `${nx}-${ny}-${Date.now()}`,
               name: newPieceName,
-              discoveredOnLevel: levelToSetup,
+              discoveredOnLevel: levelForRescue,
               captures: 0,
             };
-            const displayName = getPieceDisplayName(newPieceName);
-            addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: displayName }));
-            checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard, levelToSetup);
+            addToHistory({ 
+                key: 'history.allyJoined', 
+                values: { 
+                    pieceTypeKey: `pieces.${newPieceType}`, 
+                    name: newPieceName 
+                } 
+            });
+            checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard, levelForRescue);
           }
         }
       });
@@ -163,7 +168,7 @@ export default function Home() {
     
     newBoard.forEach((row, y) => row.forEach((tile, x) => {
         if (tile?.type === 'piece' && tile.color === 'white') {
-            checkForAllyRescueOnSetup({x, y}, newBoard);
+            checkForAllyRescueOnSetup({x, y}, newBoard, levelToSetup);
         }
     }));
     
@@ -317,8 +322,13 @@ export default function Home() {
             captures: 0,
           };
           toast({ title: t('toast.allyRescued'), description: t('toast.allyRescuedDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
-          const displayName = getPieceDisplayName(newPieceName);
-          addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: displayName }));
+          addToHistory({ 
+              key: 'history.allyJoined', 
+              values: { 
+                  pieceTypeKey: `pieces.${newPieceType}`, 
+                  name: newPieceName 
+              } 
+          });
           checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
         }
       }
@@ -367,19 +377,21 @@ export default function Home() {
         y: to.y,
     };
     
-    let eventMessage = '';
-    const pieceDisplayName = getPieceDisplayName(pieceToMove.name);
+    let historyEntry: HistoryEntry | null = null;
     
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
         newPieceState.captures = (newPieceState.captures || 0) + 1;
-        eventMessage = t('history.playerCapture', {
-            name: pieceDisplayName,
-            piece: t(`pieces.${pieceToMove.piece}`),
-            color: targetTile.color,
-            targetPiece: t(`pieces.${targetTile.piece}`),
-            x: to.x + 1,
-            y: to.y + 1
-        });
+        historyEntry = {
+            key: 'history.playerCapture',
+            values: {
+                name: pieceToMove.name,
+                pieceKey: `pieces.${pieceToMove.piece}`,
+                color: targetTile.color,
+                targetPieceKey: `pieces.${targetTile.piece}`,
+                x: to.x + 1,
+                y: to.y + 1,
+            },
+        };
     } else if (targetTile?.type === 'chest') {
       const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
       if (pieceToMove.piece === 'Pawn') {
@@ -391,7 +403,14 @@ export default function Home() {
           direction: undefined,
         };
         toast({ title: t('toast.promotion'), description: t('toast.promotionDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
-        eventMessage = t('history.playerPromotion', { name: pieceDisplayName, piece: t(`pieces.${pieceToMove.piece}`), newPieceType: t(`pieces.${newPieceType}`) });
+        historyEntry = {
+            key: 'history.playerPromotion',
+            values: {
+                name: pieceToMove.name,
+                pieceKey: `pieces.${pieceToMove.piece}`,
+                newPieceTypeKey: `pieces.${newPieceType}`,
+            },
+        };
       } else {
         const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
         const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
@@ -402,10 +421,25 @@ export default function Home() {
         newPieceState.cosmetic = newCosmetic;
         const cosmeticName = t(`cosmetics.${newCosmetic}`);
         toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName}) });
-        eventMessage = t('history.playerCosmetic', { name: pieceDisplayName, piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName });
+        historyEntry = {
+            key: 'history.playerCosmetic',
+            values: {
+                name: pieceToMove.name,
+                pieceKey: `pieces.${pieceToMove.piece}`,
+                cosmeticKey: `cosmetics.${newCosmetic}`,
+            },
+        };
       }
     } else {
-        eventMessage = t('history.playerMove', { name: pieceDisplayName, piece: t(`pieces.${pieceToMove.piece}`), x: to.x + 1, y: to.y + 1 });
+        historyEntry = {
+            key: 'history.playerMove',
+            values: {
+                name: pieceToMove.name,
+                pieceKey: `pieces.${pieceToMove.piece}`,
+                x: to.x + 1,
+                y: to.y + 1,
+            },
+        };
     }
 
     if (pieceToMove.piece === 'Pawn') {
@@ -428,8 +462,8 @@ export default function Home() {
         }
     }
 
-    if (eventMessage) {
-        addToHistory(eventMessage);
+    if (historyEntry) {
+        addToHistory(historyEntry);
     }
     newBoard[to.y][to.x] = newPieceState;
     newBoard[from.y][from.x] = null;
@@ -443,7 +477,7 @@ export default function Home() {
         advanceTurn();
         onComplete();
     }, 300);
-  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t, getPieceDisplayName]);
+  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
@@ -483,32 +517,37 @@ export default function Home() {
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece, isPlayerMoving]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
-    const movedPieceName = getPieceDisplayName(movedPiece.name);
-    let reasoning = '';
+    let historyEntry: HistoryEntry;
     if (targetTile?.type === 'piece') {
-        reasoning = t('history.enemyCapture', {
-            faction: t(`factions.${factionColor}`),
-            name: movedPieceName,
-            piece: t(`pieces.${movedPiece.piece}`),
-            x: movedPiece.x + 1,
-            y: movedPiece.y + 1,
-            targetColor: targetTile.color,
-            targetPiece: t(`pieces.${targetTile.piece}`),
-        });
+        historyEntry = {
+            key: 'history.enemyCapture',
+            values: {
+                factionKey: `factions.${factionColor}`,
+                name: movedPiece.name,
+                pieceKey: `pieces.${movedPiece.piece}`,
+                x: movedPiece.x + 1,
+                y: movedPiece.y + 1,
+                targetColor: targetTile.color,
+                targetPieceKey: `pieces.${targetTile.piece}`,
+            },
+        };
     } else {
-        reasoning = t('history.enemyMove', {
-            faction: t(`factions.${factionColor}`),
-            name: movedPieceName,
-            piece: t(`pieces.${movedPiece.piece}`),
-            x: movedPiece.x + 1,
-            y: movedPiece.y + 1
-        });
+        historyEntry = {
+            key: 'history.enemyMove',
+            values: {
+                factionKey: `factions.${factionColor}`,
+                name: movedPiece.name,
+                pieceKey: `pieces.${movedPiece.piece}`,
+                x: movedPiece.x + 1,
+                y: movedPiece.y + 1,
+            },
+        };
     }
     
-    addToHistory(reasoning);
+    addToHistory(historyEntry);
     setIsEnemyThinking(false);
     advanceTurn();
-  }, [advanceTurn, addToHistory, t, getPieceDisplayName]);
+  }, [advanceTurn, addToHistory]);
 
   const runEnemyTurn = useCallback((factionColor: string) => {
     if (!board) return;
@@ -597,7 +636,12 @@ export default function Home() {
     }
     
     if (allPossibleMoves.length === 0) {
-        addToHistory(t('history.enemyNoMoves', { faction: t(`factions.${factionColor}`) }));
+        addToHistory({ 
+            key: 'history.enemyNoMoves', 
+            values: { 
+                factionKey: `factions.${factionColor}` 
+            } 
+        });
         setIsEnemyThinking(false);
         advanceTurn();
         return;
@@ -645,7 +689,7 @@ export default function Home() {
     setTimeout(() => {
         finishEnemyTurn(factionColor, newPieceState, targetTile);
     }, 300);
-  }, [board, advanceTurn, finishEnemyTurn, addToHistory, t]);
+  }, [board, advanceTurn, finishEnemyTurn, addToHistory]);
 
 
   useEffect(() => {
