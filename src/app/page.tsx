@@ -91,7 +91,7 @@ export default function Home() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const getPieceDisplayName = useCallback((name: Piece['name']) => {
     if (typeof name === 'string') {
@@ -100,10 +100,13 @@ export default function Home() {
     if (name) {
         const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
         const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
+        if (locale === 'ja') {
+            return `${lastName} ${firstName}`;
+        }
         return `${firstName} ${lastName}`;
     }
     return t('pieces.Unnamed');
-  }, [t]);
+  }, [t, locale]);
   
   const appendToDebugLog = useCallback((message: string) => {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
@@ -212,7 +215,7 @@ export default function Home() {
     appendToDebugLog(log);
     
     setIsLoading(false);
-  }, [appendToDebugLog, addToHistory, t, getPieceDisplayName]);
+  }, [appendToDebugLog, addToHistory, getPieceDisplayName]);
   
   useEffect(() => {
     const savedGame = localStorage.getItem(SAVE_GAME_KEY);

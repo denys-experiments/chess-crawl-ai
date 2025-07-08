@@ -54,7 +54,7 @@ interface GameHudProps {
 }
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
 
     const getDisplayName = (name: Piece['name']) => {
         if (typeof name === 'string') {
@@ -63,6 +63,9 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
         if (name) {
             const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
             const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
+            if (locale === 'ja') {
+                return `${lastName} ${firstName}`;
+            }
             return `${firstName} ${lastName}`;
         }
         return t('pieces.Unnamed');
@@ -116,10 +119,13 @@ export function GameHud(props: GameHudProps) {
     if (name) {
         const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
         const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
+        if (locale === 'ja') {
+            return `${lastName} ${firstName}`;
+        }
         return `${firstName} ${lastName}`;
     }
     return t('pieces.Unnamed');
-  }, [t]);
+  }, [t, locale]);
 
   const renderedHistory = useMemo(() => {
     return history.map((entry) => {
