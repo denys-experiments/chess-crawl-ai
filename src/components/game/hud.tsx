@@ -92,8 +92,7 @@ export function GameHud(props: GameHudProps) {
     if (currentTurn === 'player') {
       return t('hud.playerTurn');
     }
-    const factionName = currentTurn.charAt(0).toUpperCase() + currentTurn.slice(1);
-    return t('hud.enemyTurn', { faction: factionName });
+    return t('hud.enemyTurn', { faction: t(`factions.${currentTurn}`) });
   };
 
   return (

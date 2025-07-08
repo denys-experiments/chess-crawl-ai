@@ -132,4 +132,11 @@ export const dbg: Locale = {
     heart: "!cosmetics.heart!",
     star: "!cosmetics.star!",
   },
+  factions: {
+    black: "!factions.black!",
+    orange: "!factions.orange!",
+    cyan: "!factions.cyan!",
+    red: "!factions.red!",
+    purple: "!factions.purple!",
+  },
 };

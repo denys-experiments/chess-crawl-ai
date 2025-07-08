@@ -132,4 +132,11 @@ export const ua: Locale = {
     heart: "❤️ Серце",
     star: "⭐ Зірка",
   },
+  factions: {
+    black: "Чорної",
+    orange: "Помаранчевої",
+    cyan: "Блакитної",
+    red: "Червоної",
+    purple: "Фіолетової",
+  },
 };

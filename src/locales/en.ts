@@ -130,6 +130,13 @@ export const en = {
     heart: "❤️ Heart",
     star: "⭐ Star",
   },
+  factions: {
+    black: "Black",
+    orange: "Orange",
+    cyan: "Cyan",
+    red: "Red",
+    purple: "Purple",
+  },
 };
 
 export type Locale = typeof en;

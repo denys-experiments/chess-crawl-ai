@@ -471,7 +471,7 @@ export default function Home() {
     let reasoning = '';
     if (targetTile?.type === 'piece') {
         reasoning = t('history.enemyCapture', {
-            faction: factionColor.charAt(0).toUpperCase() + factionColor.slice(1),
+            faction: t(`factions.${factionColor}`),
             name: movedPiece.name,
             piece: t(`pieces.${movedPiece.piece}`),
             x: movedPiece.x + 1,
@@ -481,7 +481,7 @@ export default function Home() {
         });
     } else {
         reasoning = t('history.enemyMove', {
-            faction: factionColor.charAt(0).toUpperCase() + factionColor.slice(1),
+            faction: t(`factions.${factionColor}`),
             name: movedPiece.name,
             piece: t(`pieces.${movedPiece.piece}`),
             x: movedPiece.x + 1,
@@ -581,8 +581,7 @@ export default function Home() {
     }
     
     if (allPossibleMoves.length === 0) {
-        const factionName = factionColor.charAt(0).toUpperCase() + factionColor.slice(1);
-        addToHistory(t('history.enemyNoMoves', { faction: factionName }));
+        addToHistory(t('history.enemyNoMoves', { faction: t(`factions.${factionColor}`) }));
         setIsEnemyThinking(false);
         advanceTurn();
         return;
