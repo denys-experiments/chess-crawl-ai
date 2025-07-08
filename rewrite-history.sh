@@ -1,17 +1,7 @@
 #!/bin/bash
 
-# This script rewrites the entire Git history of the repository to change the author
-# of all commits to "Firebase Studio AI".
-#
-# It uses 'git-filter-repo', which is the modern, recommended tool for
-# rewriting history. It is significantly faster and safer than the older
-# 'git filter-branch' command.
-#
-# --- PRE-REQUISITES ---
-# You must install git-filter-repo first.
-# On macOS: brew install git-filter-repo
-# On other systems (with Python/pip): pip install git-filter-repo
-# For more info: https://github.com/newren/git-filter-repo/
+# This script rewrites the Git history using the built-in 'git filter-branch' command.
+# It is an older method but does not require any external dependencies like Python.
 #
 # WARNING: This is a destructive operation that rewrites history.
 # It is recommended to back up your repository before running this script.
@@ -27,13 +17,19 @@
 CORRECT_NAME="Firebase Studio AI"
 CORRECT_EMAIL="ai@firebase.studio"
 
-# Run the history rewrite command. The --force flag is needed to run on
-# an existing repository that is not a fresh clone.
-git filter-repo --name "$CORRECT_NAME" --email "$CORRECT_EMAIL" --force
+# The --env-filter option rewrites the author and committer information for each commit.
+# The --tag-name-filter cat command ensures tags are also rewritten.
+# The -- --all flag ensures all branches and tags are processed.
+git filter-branch --env-filter '
+    export GIT_COMMITTER_NAME="'"$CORRECT_NAME"'"
+    export GIT_COMMITTER_EMAIL="'"$CORRECT_EMAIL"'"
+    export GIT_AUTHOR_NAME="'"$CORRECT_NAME"'"
+    export GIT_AUTHOR_EMAIL="'"$CORRECT_EMAIL"'"
+' --tag-name-filter cat -- --all
 
 echo " "
 echo "-------------------------------------"
-echo "History rewrite complete using git-filter-repo."
+echo "History rewrite complete using git-filter-branch."
 echo " "
 echo "To finalize these changes on GitHub, you must force push:"
 echo "git push --force --tags origin 'refs/heads/*'"
