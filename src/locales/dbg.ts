@@ -82,7 +82,6 @@ export const dbg: Locale = {
       discovered: "!hud.pieceInfo.discovered!",
       captures: "!hud.pieceInfo.captures!",
       discoveredOn: "!hud.pieceInfo.discoveredOn!",
-      cosmeticNone: "!hud.pieceInfo.cosmeticNone!",
     },
     inventory: "!hud.inventory!",
     allies: "!hud.allies!",
@@ -123,5 +122,14 @@ export const dbg: Locale = {
     Bishop: "!pieces.Bishop!",
     Knight: "!pieces.Knight!",
     Pawn: "!pieces.Pawn!",
+  },
+  cosmetics: {
+    none: "!cosmetics.none!",
+    sunglasses: "!cosmetics.sunglasses!",
+    tophat: "!cosmetics.tophat!",
+    partyhat: "!cosmetics.partyhat!",
+    bowtie: "!cosmetics.bowtie!",
+    heart: "!cosmetics.heart!",
+    star: "!cosmetics.star!",
   },
 };

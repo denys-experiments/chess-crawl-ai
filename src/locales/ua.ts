@@ -82,7 +82,6 @@ export const ua: Locale = {
       discovered: "Знайдено",
       captures: "Захоплено",
       discoveredOn: "Рівень {level}",
-      cosmeticNone: "Немає",
     },
     inventory: "Інвентар",
     allies: "Союзники: {count}",
@@ -123,5 +122,14 @@ export const ua: Locale = {
     Bishop: "Слон",
     Knight: "Кінь",
     Pawn: "Пішак",
+  },
+  cosmetics: {
+    none: "Немає",
+    sunglasses: "😎 Сонячні окуляри",
+    tophat: "🎩 Циліндр",
+    partyhat: "🎉 Святковий капелюх",
+    bowtie: "🎀 Метелик",
+    heart: "❤️ Серце",
+    star: "⭐ Зірка",
   },
 };

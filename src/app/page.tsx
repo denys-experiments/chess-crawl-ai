@@ -379,21 +379,13 @@ export default function Home() {
         eventMessage = t('history.playerPromotion', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), newPieceType: t(`pieces.${newPieceType}`) });
       } else {
         const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
-        const cosmeticDisplayNames: { [key: string]: string } = {
-            sunglasses: 'sunglasses',
-            tophat: 'a top hat',
-            partyhat: 'a party hat',
-            bowtie: 'a bowtie',
-            heart: 'a heart',
-            star: 'a star',
-        };
         const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
         
         const existingCosmetics = inventory.cosmetics.filter(c => c !== pieceToMove.cosmetic);
         setInventory(prev => ({...prev, cosmetics: [...existingCosmetics, newCosmetic]}));
         
         newPieceState.cosmetic = newCosmetic;
-        const cosmeticName = cosmeticDisplayNames[newCosmetic];
+        const cosmeticName = t(`cosmetics.${newCosmetic}`);
         toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName}) });
         eventMessage = t('history.playerCosmetic', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName });
       }
@@ -788,16 +780,8 @@ export default function Home() {
     const randomPiece = nonPawns[Math.floor(Math.random() * nonPawns.length)];
 
     const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
-    const cosmeticDisplayNames: { [key: string]: string } = {
-        sunglasses: 'sunglasses',
-        tophat: 'a top hat',
-        partyhat: 'a party hat',
-        bowtie: 'a bowtie',
-        heart: 'a heart',
-        star: 'a star',
-    };
     const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
-    const cosmeticName = cosmeticDisplayNames[newCosmetic];
+    const cosmeticName = t(`cosmetics.${newCosmetic}`);
 
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     const pieceToDecorate = newBoard[randomPiece.y][randomPiece.x];

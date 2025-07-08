@@ -80,7 +80,6 @@ export const en = {
       discovered: "Discovered",
       captures: "Captures",
       discoveredOn: "Level {level}",
-      cosmeticNone: "None",
     },
     inventory: "Inventory",
     allies: "Allies: {count}",
@@ -121,6 +120,15 @@ export const en = {
     Bishop: "Bishop",
     Knight: "Knight",
     Pawn: "Pawn",
+  },
+  cosmetics: {
+    none: "None",
+    sunglasses: "😎 Sunglasses",
+    tophat: "🎩 Top Hat",
+    partyhat: "🎉 Party Hat",
+    bowtie: "🎀 Bowtie",
+    heart: "❤️ Heart",
+    star: "⭐ Star",
   },
 };
 

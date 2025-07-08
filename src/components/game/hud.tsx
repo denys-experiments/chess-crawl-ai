@@ -56,8 +56,8 @@ interface GameHudProps {
 function PieceInfoPanel({ piece }: { piece: Piece }) {
     const { t } = useTranslation();
     const cosmeticName = piece.cosmetic
-        ? piece.cosmetic.charAt(0).toUpperCase() + piece.cosmetic.slice(1)
-        : t('hud.pieceInfo.cosmeticNone');
+        ? t(`cosmetics.${piece.cosmetic}`)
+        : t('cosmetics.none');
 
     return (
         <div className="space-y-3 mb-6">
