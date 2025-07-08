@@ -92,6 +92,18 @@ export default function Home() {
 
   const { toast } = useToast();
   const { t } = useTranslation();
+
+  const getPieceDisplayName = useCallback((name: Piece['name']) => {
+    if (typeof name === 'string') {
+        return name; // For backward compatibility with old saves
+    }
+    if (name) {
+        const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
+        const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
+        return `${firstName} ${lastName}`;
+    }
+    return t('pieces.Unnamed');
+  }, [t]);
   
   const appendToDebugLog = useCallback((message: string) => {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
@@ -141,7 +153,8 @@ export default function Home() {
               discoveredOnLevel: levelToSetup,
               captures: 0,
             };
-            addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: newPieceName }));
+            const displayName = getPieceDisplayName(newPieceName);
+            addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: displayName }));
             checkForAllyRescueOnSetup({ x: nx, y: ny }, currentBoard, levelToSetup);
           }
         }
@@ -175,11 +188,11 @@ export default function Home() {
         }
     }));
     log += `Player pieces on board: ${playerPiecesOnBoard.length}\n`;
-    log += JSON.stringify(playerPiecesOnBoard.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
+    log += JSON.stringify(playerPiecesOnBoard.map(p => ({ piece: p.piece, name: getPieceDisplayName(p.name), id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
     appendToDebugLog(log);
     
     setIsLoading(false);
-  }, [appendToDebugLog, addToHistory, t]);
+  }, [appendToDebugLog, addToHistory, t, getPieceDisplayName]);
   
   useEffect(() => {
     const savedGame = localStorage.getItem(SAVE_GAME_KEY);
@@ -304,12 +317,13 @@ export default function Home() {
             captures: 0,
           };
           toast({ title: t('toast.allyRescued'), description: t('toast.allyRescuedDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
-          addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: newPieceName }));
+          const displayName = getPieceDisplayName(newPieceName);
+          addToHistory(t('history.allyJoined', { pieceType: t(`pieces.${newPieceType}`), name: displayName }));
           checkForAllyRescue({ x: nx, y: ny }, currentBoard, levelForRescue);
         }
       }
     });
-  }, [toast, addToHistory, t]);
+  }, [toast, addToHistory, t, getPieceDisplayName]);
 
   useEffect(() => {
     if (selectedPiece && board && currentTurn === 'player') {
@@ -354,11 +368,12 @@ export default function Home() {
     };
     
     let eventMessage = '';
+    const pieceDisplayName = getPieceDisplayName(pieceToMove.name);
     
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
         newPieceState.captures = (newPieceState.captures || 0) + 1;
         eventMessage = t('history.playerCapture', {
-            name: pieceToMove.name,
+            name: pieceDisplayName,
             piece: t(`pieces.${pieceToMove.piece}`),
             color: targetTile.color,
             targetPiece: t(`pieces.${targetTile.piece}`),
@@ -376,7 +391,7 @@ export default function Home() {
           direction: undefined,
         };
         toast({ title: t('toast.promotion'), description: t('toast.promotionDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
-        eventMessage = t('history.playerPromotion', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), newPieceType: t(`pieces.${newPieceType}`) });
+        eventMessage = t('history.playerPromotion', { name: pieceDisplayName, piece: t(`pieces.${pieceToMove.piece}`), newPieceType: t(`pieces.${newPieceType}`) });
       } else {
         const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
         const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
@@ -387,10 +402,10 @@ export default function Home() {
         newPieceState.cosmetic = newCosmetic;
         const cosmeticName = t(`cosmetics.${newCosmetic}`);
         toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName}) });
-        eventMessage = t('history.playerCosmetic', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName });
+        eventMessage = t('history.playerCosmetic', { name: pieceDisplayName, piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName });
       }
     } else {
-        eventMessage = t('history.playerMove', { name: pieceToMove.name, piece: t(`pieces.${pieceToMove.piece}`), x: to.x + 1, y: to.y + 1 });
+        eventMessage = t('history.playerMove', { name: pieceDisplayName, piece: t(`pieces.${pieceToMove.piece}`), x: to.x + 1, y: to.y + 1 });
     }
 
     if (pieceToMove.piece === 'Pawn') {
@@ -428,7 +443,7 @@ export default function Home() {
         advanceTurn();
         onComplete();
     }, 300);
-  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t]);
+  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t, getPieceDisplayName]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
@@ -468,11 +483,12 @@ export default function Home() {
   }, [availableMoves, board, currentTurn, isEnemyThinking, isGameOver, isLevelComplete, movePiece, selectedPiece, isPlayerMoving]);
   
   const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
+    const movedPieceName = getPieceDisplayName(movedPiece.name);
     let reasoning = '';
     if (targetTile?.type === 'piece') {
         reasoning = t('history.enemyCapture', {
             faction: t(`factions.${factionColor}`),
-            name: movedPiece.name,
+            name: movedPieceName,
             piece: t(`pieces.${movedPiece.piece}`),
             x: movedPiece.x + 1,
             y: movedPiece.y + 1,
@@ -482,7 +498,7 @@ export default function Home() {
     } else {
         reasoning = t('history.enemyMove', {
             faction: t(`factions.${factionColor}`),
-            name: movedPiece.name,
+            name: movedPieceName,
             piece: t(`pieces.${movedPiece.piece}`),
             x: movedPiece.x + 1,
             y: movedPiece.y + 1
@@ -492,7 +508,7 @@ export default function Home() {
     addToHistory(reasoning);
     setIsEnemyThinking(false);
     advanceTurn();
-  }, [advanceTurn, addToHistory, t]);
+  }, [advanceTurn, addToHistory, t, getPieceDisplayName]);
 
   const runEnemyTurn = useCallback((factionColor: string) => {
     if (!board) return;
@@ -834,6 +850,7 @@ export default function Home() {
         level={level}
         playerPieces={playerPieces}
         onNextLevel={handleCarryOver}
+        getPieceDisplayName={getPieceDisplayName}
       />
       <GameOverDialog 
         isOpen={isGameOver}
@@ -847,7 +864,7 @@ export default function Home() {
   );
 }
 
-function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isOpen: boolean; level: number; playerPieces: Piece[]; onNextLevel: (pieces: Piece[]) => void; }) {
+function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel, getPieceDisplayName }: { isOpen: boolean; level: number; playerPieces: Piece[]; onNextLevel: (pieces: Piece[]) => void; getPieceDisplayName: (name: Piece['name']) => string; }) {
     const [selectedPieces, setSelectedPieces] = useState<Piece[]>([]);
     const { t } = useTranslation();
     const maxCarryOver = Math.floor(level / 2) + 1;
@@ -889,7 +906,7 @@ function LevelCompleteDialog({ isOpen, level, playerPieces, onNextLevel }: { isO
                         {selectablePieces.map(piece => (
                             <div key={piece.id} onClick={() => togglePieceSelection(piece)} className={`p-2 border-2 rounded-lg cursor-pointer flex flex-col items-center justify-center text-center transition-all ${selectedPieces.find(p => p.id === piece.id) ? 'border-primary bg-primary/20' : 'border-transparent hover:border-border'}`}>
                                  <GamePiece piece={piece} size="sm" />
-                                 <span className="text-xs font-medium mt-1.5 leading-tight">{piece.name}</span>
+                                 <span className="text-xs font-medium mt-1.5 leading-tight">{getPieceDisplayName(piece.name)}</span>
                                  <span className="text-xs text-muted-foreground">({t(`pieces.${piece.piece}`)})</span>
                             </div>
                         ))}

@@ -55,6 +55,20 @@ interface GameHudProps {
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
     const { t } = useTranslation();
+
+    const getDisplayName = (name: Piece['name']) => {
+        if (typeof name === 'string') {
+            return name; // For backward compatibility with old saves
+        }
+        if (name) {
+            const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
+            const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
+            return `${firstName} ${lastName}`;
+        }
+        return t('pieces.Unnamed');
+    };
+
+    const displayName = getDisplayName(piece.name);
     const cosmeticName = piece.cosmetic
         ? t(`cosmetics.${piece.cosmetic}`)
         : t('cosmetics.none');
@@ -62,7 +76,7 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
     return (
         <div className="space-y-3 mb-6">
             <div className="p-4 border rounded-lg bg-background/50">
-                <h4 className="font-headline text-lg text-primary text-center mb-3">{piece.name}</h4>
+                <h4 className="font-headline text-lg text-primary text-center mb-3">{displayName}</h4>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                     <div className="font-semibold text-muted-foreground">{t('hud.pieceInfo.pieceType')}</div>
                     <div className="text-right">{t(`pieces.${piece.piece}`)}</div>

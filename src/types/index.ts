@@ -9,7 +9,7 @@ export interface Piece {
   color: PieceColor;
   x: number;
   y: number;
-  name: string;
+  name: string | { firstNameIndex: number; lastNameIndex: number; };
   discoveredOnLevel: number;
   captures: number;
   cosmetic?: string;

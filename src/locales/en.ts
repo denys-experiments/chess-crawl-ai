@@ -120,6 +120,7 @@ export const en = {
     Bishop: "Bishop",
     Knight: "Knight",
     Pawn: "Pawn",
+    Unnamed: "Unnamed",
   },
   cosmetics: {
     none: "None",
@@ -136,6 +137,23 @@ export const en = {
     cyan: "Cyan",
     red: "Red",
     purple: "Purple",
+  },
+  nameParts: {
+    firstNames: [
+        'Alex', 'Bobbie', 'Casey', 'Drew', 'Eddie', 'Frankie', 'Gray', 'Harley',
+        'Jamie', 'Jordan', 'Kai', 'Leslie', 'Morgan', 'Pat', 'Quinn', 'Riley',
+        'Rowan', 'Sam', 'Taylor', 'Vic', 'Ash', 'Blair', 'Cameron', 'Dakota',
+        'Emerson', 'Finley', 'Hayden', 'Indigo', 'Jesse', 'Kendall', 'Logan',
+        'Marlowe', 'Noel', 'Parker', 'Reagan', 'Sawyer', 'Skyler', 'Tatum', 'Winter'
+    ],
+    lastNames: [
+        'the Valiant', 'the Bold', 'the Swift', 'the Clever', 'the Mighty',
+        'the Steadfast', 'the Wise', 'the Just', 'the Fearless', 'the Gentle',
+        'the Bright', 'the Grim', 'the Silent', 'of the Hills', 'of the River',
+        'of the Forest', 'of the Mountain', 'of the Sky', 'of the Stars', 'of the Depths',
+        'Ironheart', 'Shadowend', 'Stormcaller', 'Sunstrider', 'Moonwhisper',
+        'Stonehand', 'Lightbringer', 'Voidgazer', 'Firebrand', 'Winterborn'
+    ]
   },
 };
 

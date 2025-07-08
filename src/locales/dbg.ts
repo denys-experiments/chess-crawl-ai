@@ -122,6 +122,7 @@ export const dbg: Locale = {
     Bishop: "!pieces.Bishop!",
     Knight: "!pieces.Knight!",
     Pawn: "!pieces.Pawn!",
+    Unnamed: "!pieces.Unnamed!",
   },
   cosmetics: {
     none: "!cosmetics.none!",
@@ -138,5 +139,22 @@ export const dbg: Locale = {
     cyan: "!factions.cyan!",
     red: "!factions.red!",
     purple: "!factions.purple!",
+  },
+  nameParts: {
+    firstNames: [
+      '!fname.0!', '!fname.1!', '!fname.2!', '!fname.3!', '!fname.4!', '!fname.5!', '!fname.6!', '!fname.7!',
+      '!fname.8!', '!fname.9!', '!fname.10!', '!fname.11!', '!fname.12!', '!fname.13!', '!fname.14!', '!fname.15!',
+      '!fname.16!', '!fname.17!', '!fname.18!', '!fname.19!', '!fname.20!', '!fname.21!', '!fname.22!', '!fname.23!',
+      '!fname.24!', '!fname.25!', '!fname.26!', '!fname.27!', '!fname.28!', '!fname.29!', '!fname.30!',
+      '!fname.31!', '!fname.32!', '!fname.33!', '!fname.34!', '!fname.3_5!', '!fname.36!', '!fname.37!', '!fname.38!'
+    ],
+    lastNames: [
+      '!lname.0!', '!lname.1!', '!lname.2!', '!lname.3!', '!lname.4!',
+      '!lname.5!', '!lname.6!', '!lname.7!', '!lname.8!', '!lname.9!',
+      '!lname.10!', '!lname.11!', '!lname.12!', '!lname.13!', '!lname.14!',
+      '!lname.15!', '!lname.16!', '!lname.17!', '!lname.18!', '!lname.19!',
+      '!lname.20!', '!lname.21!', '!lname.22!', '!lname.23!', '!lname.24!',
+      '!lname.25!', '!lname.26!', '!lname.27!', '!lname.28!', '!lname.29!'
+    ]
   },
 };
