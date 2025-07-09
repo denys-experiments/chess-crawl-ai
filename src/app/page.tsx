@@ -13,6 +13,7 @@ import { useTranslation } from '@/context/i18n';
 import { LevelCompleteDialog } from '@/components/game/level-complete-dialog';
 import { GameOverDialog } from '@/components/game/game-over-dialog';
 import { HowToPlayDialog } from '@/components/game/how-to-play-dialog';
+import { playSound, initAudioContext } from '@/lib/sounds';
 
 const SAVE_GAME_KEY = 'chess-crawl-save-game';
 
@@ -79,6 +80,7 @@ export default function Home() {
   const clickLock = useRef(false);
   const [currentTurn, setCurrentTurn] = useState('player');
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const audioInitialized = useRef(false);
 
   const { toast } = useToast();
   const { t, locale } = useTranslation();
@@ -271,20 +273,25 @@ export default function Home() {
     if (playerKing) {
         const enemyFactions = Array.from(new Set(newEnemyPieces.map(p => p.color)));
         const inCheck = isSquareAttackedBy({ x: playerKing.x, y: playerKing.y }, board, enemyFactions);
+        if (inCheck && !isKingInCheck) {
+            playSound('check');
+        }
         setIsKingInCheck(inCheck);
     } else {
         setIsKingInCheck(false);
     }
 
     if (level > 0 && !isLoading) {
-      if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0) {
+      if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0 && !isLevelComplete) {
+        playSound('win');
         setIsLevelComplete(true);
-      } else if (newPlayerPieces.length === 0 || !newPlayerPieces.some(p => p.piece === 'King')) {
+      } else if ((newPlayerPieces.length === 0 || !newPlayerPieces.some(p => p.piece === 'King')) && !isGameOver) {
+        playSound('lose');
         setIsGameOver(true);
         localStorage.removeItem(SAVE_GAME_KEY);
       }
     }
-  }, [board, level, isLoading]);
+  }, [board, level, isLoading, isKingInCheck, isLevelComplete, isGameOver]);
   
   const activeEnemyFactions = useMemo(() => {
     if (!board) return [];
@@ -388,6 +395,7 @@ export default function Home() {
     let historyEntry: HistoryEntry | null = null;
     
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
+        playSound('capture');
         newPieceState.captures = (newPieceState.captures || 0) + 1;
         historyEntry = {
             key: 'history.playerCapture',
@@ -401,6 +409,7 @@ export default function Home() {
             },
         };
     } else if (targetTile?.type === 'chest') {
+      playSound('move');
       const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
       if (pieceToMove.piece === 'Pawn') {
         const newPieceType = getPromotionPiece(level, currentPlayerPieces);
@@ -439,6 +448,7 @@ export default function Home() {
         };
       }
     } else {
+        playSound('move');
         historyEntry = {
             key: 'history.playerMove',
             values: {
@@ -488,6 +498,11 @@ export default function Home() {
   }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
+    if (!audioInitialized.current) {
+      initAudioContext();
+      audioInitialized.current = true;
+    }
+
     if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
 
     const isPlayerTurn = currentTurn === 'player' && !isEnemyThinking;
@@ -683,7 +698,10 @@ export default function Home() {
     let newPieceState: Piece = { ...pieceToMove, x: move.x, y: move.y };
     
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
+        playSound('capture');
         newPieceState.captures = (newPieceState.captures || 0) + 1;
+    } else {
+        playSound('move');
     }
 
     if (pieceToMove.piece === 'Pawn') {
