@@ -117,7 +117,7 @@ export const ja: Locale = {
     language: "言語",
     english: "英語",
     debug: "デバッグ",
-    ukrainian: "ウクライна語",
+    ukrainian: "ウクライナ語",
     japanese: "日本語",
   },
   pieces: {
@@ -155,3 +155,5 @@ export const ja: Locale = {
     ]
   },
 };
+
+    
