@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useState, useContext, useCallback, useMemo } from 'react';
+import React, { createContext, useState, useContext, useCallback, useMemo, useEffect } from 'react';
 import { en } from '@/locales/en';
 import { dbg } from '@/locales/dbg';
 import { ua } from '@/locales/ua';
@@ -9,6 +9,7 @@ import { ja } from '@/locales/ja';
 import type { Locale } from '@/locales/en';
 
 const locales: { [key: string]: Locale } = { en, dbg, ua, ja };
+const I18N_STORAGE_KEY = 'chess-crawl-locale';
 
 export type LocaleKey = keyof typeof locales;
 
@@ -25,7 +26,21 @@ function getValueFromPath(obj: any, path: string): string | undefined {
 }
 
 export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
-  const [locale, setLocale] = useState<LocaleKey>('en');
+  const [locale, setLocaleState] = useState<LocaleKey>('en');
+
+  useEffect(() => {
+    const savedLocale = localStorage.getItem(I18N_STORAGE_KEY) as LocaleKey | null;
+    if (savedLocale && locales[savedLocale]) {
+      setLocaleState(savedLocale);
+    }
+  }, []);
+
+  const setLocale = useCallback((newLocale: LocaleKey) => {
+    if (locales[newLocale]) {
+      localStorage.setItem(I18N_STORAGE_KEY, newLocale);
+      setLocaleState(newLocale);
+    }
+  }, []);
 
   const t = useCallback((key: string, values?: Record<string, string | number>): string => {
     const languageStrings = locales[locale] || locales['en'];
@@ -45,7 +60,7 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     locale,
     setLocale,
     t,
-  }), [locale, t]);
+  }), [locale, setLocale, t]);
 
   return (
     <I18nContext.Provider value={value}>
