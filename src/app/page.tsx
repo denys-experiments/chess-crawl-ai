@@ -16,6 +16,7 @@ import { HowToPlayDialog } from '@/components/game/how-to-play-dialog';
 import { playSound, initAudioContext } from '@/lib/sounds';
 
 const SAVE_GAME_KEY = 'chess-crawl-save-game';
+const SOUND_ENABLED_KEY = 'chess-crawl-sound-enabled';
 
 function getPromotionPiece(level: number, playerPieces: Piece[]): PieceType {
     const promotionOptions: { piece: PieceType; baseWeight: number }[] = [
@@ -80,6 +81,7 @@ export default function Home() {
   const clickLock = useRef(false);
   const [currentTurn, setCurrentTurn] = useState('player');
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const audioInitialized = useRef(false);
 
   const { toast } = useToast();
@@ -228,6 +230,11 @@ export default function Home() {
     } else {
         setupLevel(1, []);
     }
+    
+    const savedSoundSetting = localStorage.getItem(SOUND_ENABLED_KEY);
+    if (savedSoundSetting !== null) {
+      setIsSoundEnabled(JSON.parse(savedSoundSetting));
+    }
   }, [setupLevel]);
 
   useEffect(() => {
@@ -242,7 +249,8 @@ export default function Home() {
         inventory,
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
-  }, [board, currentTurn, history, level, inventory, isLoading, isGameOver, isLevelComplete]);
+    localStorage.setItem(SOUND_ENABLED_KEY, JSON.stringify(isSoundEnabled));
+  }, [board, currentTurn, history, level, inventory, isLoading, isGameOver, isLevelComplete, isSoundEnabled]);
 
 
   useEffect(() => {
@@ -274,7 +282,7 @@ export default function Home() {
         const enemyFactions = Array.from(new Set(newEnemyPieces.map(p => p.color)));
         const inCheck = isSquareAttackedBy({ x: playerKing.x, y: playerKing.y }, board, enemyFactions);
         if (inCheck && !isKingInCheck) {
-            playSound('check');
+            if (isSoundEnabled) playSound('check');
         }
         setIsKingInCheck(inCheck);
     } else {
@@ -283,15 +291,15 @@ export default function Home() {
 
     if (level > 0 && !isLoading) {
       if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0 && !isLevelComplete) {
-        playSound('win');
+        if (isSoundEnabled) playSound('win');
         setIsLevelComplete(true);
       } else if ((newPlayerPieces.length === 0 || !newPlayerPieces.some(p => p.piece === 'King')) && !isGameOver) {
-        playSound('lose');
+        if (isSoundEnabled) playSound('lose');
         setIsGameOver(true);
         localStorage.removeItem(SAVE_GAME_KEY);
       }
     }
-  }, [board, level, isLoading, isKingInCheck, isLevelComplete, isGameOver]);
+  }, [board, level, isLoading, isKingInCheck, isLevelComplete, isGameOver, isSoundEnabled]);
   
   const activeEnemyFactions = useMemo(() => {
     if (!board) return [];
@@ -395,7 +403,7 @@ export default function Home() {
     let historyEntry: HistoryEntry | null = null;
     
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
-        playSound('capture');
+        if (isSoundEnabled) playSound('capture');
         newPieceState.captures = (newPieceState.captures || 0) + 1;
         historyEntry = {
             key: 'history.playerCapture',
@@ -409,7 +417,7 @@ export default function Home() {
             },
         };
     } else if (targetTile?.type === 'chest') {
-      playSound('move');
+      if (isSoundEnabled) playSound('move');
       const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
       if (pieceToMove.piece === 'Pawn') {
         const newPieceType = getPromotionPiece(level, currentPlayerPieces);
@@ -448,7 +456,7 @@ export default function Home() {
         };
       }
     } else {
-        playSound('move');
+        if (isSoundEnabled) playSound('move');
         historyEntry = {
             key: 'history.playerMove',
             values: {
@@ -495,7 +503,7 @@ export default function Home() {
         advanceTurn();
         onComplete();
     }, 300);
-  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t]);
+  }, [board, checkForAllyRescue, inventory.cosmetics, level, toast, advanceTurn, addToHistory, t, isSoundEnabled]);
 
   const handleTileClick = useCallback((x: number, y: number) => {
     if (!audioInitialized.current) {
@@ -698,10 +706,10 @@ export default function Home() {
     let newPieceState: Piece = { ...pieceToMove, x: move.x, y: move.y };
     
     if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
-        playSound('capture');
+        if (isSoundEnabled) playSound('capture');
         newPieceState.captures = (newPieceState.captures || 0) + 1;
     } else {
-        playSound('move');
+        if (isSoundEnabled) playSound('move');
     }
 
     if (pieceToMove.piece === 'Pawn') {
@@ -731,7 +739,7 @@ export default function Home() {
     setTimeout(() => {
         finishEnemyTurn(factionColor, newPieceState, targetTile);
     }, 300);
-  }, [board, advanceTurn, finishEnemyTurn, addToHistory]);
+  }, [board, advanceTurn, finishEnemyTurn, addToHistory, isSoundEnabled]);
 
 
   useEffect(() => {
@@ -929,6 +937,8 @@ export default function Home() {
           onRestart={restartGame}
           debugLog={debugLog}
           onShowHelp={() => setIsHelpOpen(true)}
+          isSoundEnabled={isSoundEnabled}
+          onToggleSound={() => setIsSoundEnabled(p => !p)}
         />
       </div>
       <LevelCompleteDialog 

@@ -4,7 +4,7 @@ import type { Piece, PieceType, HistoryEntry, HistoryLogEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown, RotateCcw, HelpCircle, Globe } from 'lucide-react';
+import { PawPrint, Glasses, Loader2, Wand2, ChevronsUpDown, RotateCcw, HelpCircle, Globe, Volume2, VolumeX } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -51,6 +51,8 @@ interface GameHudProps {
   onRestart: () => void;
   debugLog: string;
   onShowHelp: () => void;
+  isSoundEnabled: boolean;
+  onToggleSound: () => void;
 }
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
@@ -100,7 +102,10 @@ function PieceInfoPanel({ piece }: { piece: Piece }) {
 }
 
 export function GameHud(props: GameHudProps) {
-  const { currentTurn, level, inventory, history, isEnemyThinking, selectedPiece, onRestart, onShowHelp } = props;
+  const { 
+    currentTurn, level, inventory, history, isEnemyThinking, 
+    selectedPiece, onRestart, onShowHelp, isSoundEnabled, onToggleSound 
+  } = props;
   const { t, locale, setLocale } = useTranslation();
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -160,6 +165,10 @@ export function GameHud(props: GameHudProps) {
           <div className="flex justify-between items-center">
             <CardTitle className="font-headline text-3xl">{t('hud.title')}</CardTitle>
             <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleSound}>
+                    {isSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-muted-foreground" />}
+                    <span className="sr-only">{isSoundEnabled ? t('hud.muteSounds') : t('hud.unmuteSounds')}</span>
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShowHelp}>
                     <HelpCircle className="h-5 w-5" />
                     <span className="sr-only">{t('hud.howToPlay')}</span>
@@ -226,7 +235,14 @@ export function GameHud(props: GameHudProps) {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="py-4 border-t border-border mt-4">
-               <CheatPanel {...props} />
+               <CheatPanel 
+                 onRegenerateLevel={props.onRegenerateLevel}
+                 onCreatePiece={props.onCreatePiece}
+                 onPromotePawn={props.onPromotePawn}
+                 onAwardCosmetic={props.onAwardCosmetic}
+                 onWinLevel={props.onWinLevel}
+                 debugLog={props.debugLog}
+               />
             </CollapsibleContent>
           </Collapsible>
           

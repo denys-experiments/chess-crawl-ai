@@ -119,6 +119,8 @@ export const ja: Locale = {
     debug: "デバッグ",
     ukrainian: "ウクライナ語",
     japanese: "日本語",
+    muteSounds: "ミュート",
+    unmuteSounds: "ミュート解除",
   },
   pieces: {
     King: "キング",
@@ -155,5 +157,3 @@ export const ja: Locale = {
     ]
   },
 };
-
-    

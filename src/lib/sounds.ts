@@ -52,16 +52,16 @@ export const playSound = (soundType: 'move' | 'capture' | 'check' | 'win' | 'los
 
     switch (soundType) {
         case 'move':
-            // A short, soft click
-            playNote(600, 0.1, 0.05, 'sine');
+            // A short, sharp click
+            playNote(1200, 0.05, 0.03, 'triangle');
             break;
         case 'capture':
             // A slightly lower, harsher sound
-            playNote(400, 0.15, 0.08, 'square');
+            playNote(400, 0.1, 0.06, 'square');
             break;
         case 'check':
-            // A short, high-pitched warning sound
-            playNote(1200, 0.15, 0.1, 'triangle');
+            // A distinct, sharp warning click
+            playNote(2000, 0.1, 0.08, 'triangle');
             break;
         case 'win':
             // A pleasant ascending arpeggio

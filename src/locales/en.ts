@@ -117,6 +117,8 @@ export const en = {
     debug: "Debug",
     ukrainian: "Ukrainian",
     japanese: "Japanese",
+    muteSounds: "Mute sounds",
+    unmuteSounds: "Unmute sounds",
   },
   pieces: {
     King: "King",
