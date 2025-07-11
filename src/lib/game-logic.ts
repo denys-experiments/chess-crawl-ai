@@ -449,6 +449,7 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
   const uniqueMoves = new Map<string, Position>();
   const { x, y } = pos;
   const direction = piece.direction || (piece.color === 'white' ? 'up' : 'down');
+  const isPlayerPiece = piece.color === 'white';
 
   // Rule 1: Standard forward move
   const forwardVectors = {
@@ -463,7 +464,9 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
 
   if (isWithinBoard(nx, ny, board)) {
     const target = board[ny][nx];
-    if (!target || target.type === 'chest') {
+    if (!target) {
+      uniqueMoves.set(`${nx},${ny}`, { x: nx, y: ny });
+    } else if (isPlayerPiece && target.type === 'chest') {
       uniqueMoves.set(`${nx},${ny}`, { x: nx, y: ny });
     }
   }
@@ -515,7 +518,9 @@ function getPawnMoves(pos: Position, piece: Piece, board: Board): Position[] {
 
           if (isWithinBoard(bounceX, bounceY, board)) {
               const bounceTile = board[bounceY][bounceX];
-              if (!bounceTile || bounceTile.type === 'chest') {
+              if (!bounceTile) {
+                  uniqueMoves.set(`${bounceX},${bounceY}`, { x: bounceX, y: bounceY });
+              } else if (isPlayerPiece && bounceTile.type === 'chest') {
                   uniqueMoves.set(`${bounceX},${bounceY}`, { x: bounceX, y: bounceY });
               }
           }

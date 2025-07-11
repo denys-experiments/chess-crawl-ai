@@ -624,6 +624,13 @@ export function useGame() {
             let score = 0;
             const targetTile = board[move.y][move.x];
 
+            if (targetTile?.type === 'chest') {
+                 // This move is invalid, give it a very low score to avoid it.
+                score = -Infinity;
+                allPossibleMoves.push({ piece: enemy, move, score });
+                continue;
+            }
+
             if (targetTile?.type === 'piece' && targetTile.color !== enemy.color) {
                 let captureValue = 0;
                 switch (targetTile.piece) {
@@ -640,9 +647,6 @@ export function useGame() {
                 } else {
                     score += captureValue;
                 }
-            } else if (targetTile?.type === 'chest') {
-                 // Enemies avoid chests for now
-                score -= 50;
             }
             
             if (playerKing) {
