@@ -102,7 +102,7 @@ export function GameHud(props: GameHudProps) {
       return t('hud.playerTurn');
     }
     return t('hud.enemyTurn', { faction: t(`factions.${currentTurn}`) });
-  }, [currentTurn, t]);
+  }, [currentTurn, t, locale]);
   
   const renderedHistory = useMemo(() => {
     return history.map(entry => {
@@ -122,7 +122,7 @@ export function GameHud(props: GameHudProps) {
         }
         return t(key, translatedValues);
     }).join('\n');
-  }, [history, t, getPieceDisplayName]);
+  }, [history, t, getPieceDisplayName, locale]);
 
 
   return (
