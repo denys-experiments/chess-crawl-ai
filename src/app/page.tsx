@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
 import { Loader2 } from 'lucide-react';
@@ -49,7 +49,16 @@ function Game() {
     handleCreatePiece,
     handlePromotePawn,
     handleAwardCosmetic,
+    calculateAvailableMoves,
   } = actions;
+
+  // This useEffect will now be responsible for calculating available moves
+  // whenever the selection or turn changes. This is the key change to
+  // break the render loop.
+  useEffect(() => {
+    calculateAvailableMoves();
+  }, [selectedPiece, currentTurn, board, calculateAvailableMoves]);
+
 
   const selectedPieceData = useMemo(() => {
     if (selectedPiece && board) {

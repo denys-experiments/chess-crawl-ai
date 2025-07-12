@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useCallback, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from '@/context/i18n';
 import type { UseGameStateReturn } from './use-game-state';
@@ -30,7 +30,7 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
     const isSquareAttackedBy = isSquareAttackedByFromLogic;
     const playSound = playSoundLogic;
 
-    const activeEnemyFactions = useMemo(() => {
+    const activeEnemyFactions = useCallback(() => {
         const board = getState().board;
         if (!board) return [];
         const factions = new Set<string>();
@@ -42,9 +42,10 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
         return Array.from(factions).sort();
     }, [getState]);
   
-    const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
+    const getTurnOrder = useCallback(() => ['player', ...activeEnemyFactions()], [activeEnemyFactions]);
 
     const advanceTurn = useCallback(() => {
+        const turnOrder = getTurnOrder();
         setters.setCurrentTurn(prevTurn => {
             const currentIndex = turnOrder.indexOf(prevTurn);
             const nextIndex = (currentIndex + 1) % turnOrder.length;
@@ -52,7 +53,7 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
             saveGame();
             return newTurn;
         });
-    }, [turnOrder, setters, saveGame]);
+    }, [getTurnOrder, setters, saveGame]);
 
     const getPromotionPiece = useCallback((level: number, playerPieces: Piece[]): PieceType => {
         const promotionOptions: { piece: PieceType; baseWeight: number }[] = [
@@ -216,11 +217,12 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
             audioInitialized.current = true;
         }
 
-        const { board, isLevelComplete, isGameOver, isPlayerMoving, currentTurn, isEnemyThinking, selectedPiece, availableMoves } = getState();
+        const { board, isLevelComplete, isGameOver, isPlayerMoving, currentTurn, isEnemyThinking, selectedPiece } = getState();
         if (!board || isLevelComplete || isGameOver || isPlayerMoving || clickLock.current) return;
 
         const isPlayerTurn = currentTurn === 'player' && !isEnemyThinking;
-
+        
+        const availableMoves = selectedPiece ? getValidMoves(selectedPiece, board) : [];
         if (selectedPiece && availableMoves.some(move => move.x === x && move.y === y)) {
             if (isPlayerTurn) {
                 setters.setIsPlayerMoving(true);
@@ -251,9 +253,9 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
         if(isPlayerTurn) {
             setters.setSelectedPiece(null);
         }
-    }, [getState, setters, movePiece]);
+    }, [getState, setters, movePiece, getValidMoves]);
     
-    useEffect(() => {
+    const calculateAvailableMoves = useCallback(() => {
         const { selectedPiece, board, currentTurn, enemyPieces } = getState();
         if (selectedPiece && board && currentTurn === 'player') {
             const piece = board[selectedPiece.y][selectedPiece.x];
@@ -314,15 +316,15 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
 
     return {
         handleTileClick,
-        movePiece,
         advanceTurn,
         checkForAllyRescueOnSetup,
         getPromotionPiece,
         handleWinLevel,
         handleAwardCosmetic,
-        isWithinBoard,
-        isSquareAttackedBy,
         playSound,
         createHistoryEntry,
+        isWithinBoard,
+        isSquareAttackedBy,
+        calculateAvailableMoves,
     };
 }
