@@ -16,7 +16,7 @@ export function useGame() {
   const { get: getState, setters } = stateAndSetters;
 
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, getPieceDisplayName } = useTranslation();
 
   const gameActions = useGameActions(getState, setters);
   const { runEnemyTurn } = useEnemyAI(getState, setters, gameActions.advanceTurn);
@@ -230,6 +230,7 @@ export function useGame() {
     setters.setIsLevelComplete(false);
     setters.setIsGameOver(false);
     toast({ title: t('toast.cheatActivated'), description: t('toast.levelRegenerated', { width, height, factions: factions.length }) });
+    setters.setIsLoading(false);
   }
 
   const handleCreatePiece = (pieceType: PieceType) => {
