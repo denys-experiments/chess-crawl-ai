@@ -9,9 +9,9 @@ import { LevelCompleteDialog } from '@/components/game/level-complete-dialog';
 import { GameOverDialog } from '@/components/game/game-over-dialog';
 import { HowToPlayDialog } from '@/components/game/how-to-play-dialog';
 import { useGame } from '@/hooks/use-game';
-import { useTranslation } from '@/context/i18n';
+import { I18nProvider, useTranslation } from '@/context/i18n';
 
-export default function Home() {
+function Game() {
   const {
     state,
     actions,
@@ -118,4 +118,13 @@ export default function Home() {
       />
     </main>
   );
+}
+
+
+export default function Home() {
+  return (
+    <I18nProvider>
+      <Game />
+    </I18nProvider>
+  )
 }
