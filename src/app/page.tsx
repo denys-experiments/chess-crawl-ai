@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { GameBoard } from '@/components/game/board';
 import { GameHud } from '@/components/game/hud';
 import { Loader2 } from 'lucide-react';
