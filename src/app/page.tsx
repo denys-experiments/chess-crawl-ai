@@ -98,7 +98,7 @@ export default function Home() {
           debugLog={debugLog}
           onShowHelp={() => setIsHelpOpen(true)}
           isSoundEnabled={isSoundEnabled}
-          onToggleSound={() => setIsSoundEnabled(p => !p)}
+          onToggleSound={setIsSoundEnabled}
         />
       </div>
       <LevelCompleteDialog 

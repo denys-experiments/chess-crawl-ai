@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useEffect, useCallback, useMemo } from 'react';
-import type { Piece, PieceType, HistoryEntry } from '@/types';
+import { useEffect, useCallback } from 'react';
+import type { Piece, PieceType } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from '@/context/i18n';
-import { useGameState, SAVE_GAME_KEY, SOUND_ENABLED_KEY } from './use-game-state';
+import { useGameState, SAVE_GAME_KEY } from './use-game-state';
 import { useGameActions } from './use-game-actions';
 import { useEnemyAI } from './use-enemy-ai';
 import { initializeBoard } from '@/lib/game-logic';
@@ -25,7 +25,6 @@ export function useGame() {
     currentTurn,
     history,
     inventory,
-    isSoundEnabled,
     playerPieces,
   } = state.get();
   
@@ -129,12 +128,7 @@ export function useGame() {
     } else {
         setupLevel(1, []);
     }
-    
-    const savedSoundSetting = localStorage.getItem(SOUND_ENABLED_KEY);
-    if (savedSoundSetting !== null) {
-      state.setters.setIsSoundEnabled(JSON.parse(savedSoundSetting));
-    }
-  }, [setupLevel]);
+  }, []);
 
   useEffect(() => {
     if (isLoading || isGameOver || isLevelComplete) {
@@ -148,8 +142,7 @@ export function useGame() {
         inventory,
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
-    localStorage.setItem(SOUND_ENABLED_KEY, JSON.stringify(isSoundEnabled));
-  }, [board, currentTurn, history, level, inventory, isLoading, isGameOver, isLevelComplete, isSoundEnabled]);
+  }, [board, currentTurn, history, level, inventory, isLoading, isGameOver, isLevelComplete]);
 
   useEffect(() => {
     if (!board) return;
@@ -176,7 +169,7 @@ export function useGame() {
         const enemyFactions = Array.from(new Set(newEnemyPieces.map(p => p.color)));
         const inCheck = actions.isSquareAttackedBy({ x: playerKing.x, y: playerKing.y }, board, enemyFactions);
         if (inCheck && !state.get().isKingInCheck) {
-            if (isSoundEnabled) actions.playSound('check');
+            if (actions.isSoundEnabled) actions.playSound('check');
         }
         setIsKingInCheck(inCheck);
     } else {
@@ -185,15 +178,15 @@ export function useGame() {
 
     if (level > 0 && !isLoading) {
       if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0 && !isLevelComplete) {
-        if (isSoundEnabled) actions.playSound('win');
+        if (actions.isSoundEnabled) actions.playSound('win');
         setIsLevelComplete(true);
       } else if ((newPlayerPieces.length === 0 || !playerKing) && !isGameOver) {
-        if (isSoundEnabled) actions.playSound('lose');
+        if (actions.isSoundEnabled) actions.playSound('lose');
         setIsGameOver(true);
         localStorage.removeItem(SAVE_GAME_KEY);
       }
     }
-  }, [board, level, isLoading, state.get().isKingInCheck, isLevelComplete, isGameOver, isSoundEnabled, setPlayerPieces, setEnemyPieces, setIsKingInCheck, setIsLevelComplete, setIsGameOver, actions]);
+  }, [board, level, isLoading, state.get().isKingInCheck, isLevelComplete, isGameOver, setPlayerPieces, setEnemyPieces, setIsKingInCheck, setIsLevelComplete, setIsGameOver, actions]);
   
   useEffect(() => {
     if (state.get().currentTurn !== 'player' && !state.get().isEnemyThinking && !isGameOver && !isLevelComplete) {
@@ -316,14 +309,16 @@ export function useGame() {
     }
   }
   
+  const { isSoundEnabled, toggleSound } = actions;
+
   return {
-    state: state.get(),
+    state: { ...state.get(), isSoundEnabled },
     actions: {
       handleTileClick: actions.handleTileClick,
       restartGame,
       handleCarryOver,
       setIsHelpOpen: state.setters.setIsHelpOpen,
-      setIsSoundEnabled: state.setters.setIsSoundEnabled,
+      setIsSoundEnabled: toggleSound,
       handleRegenerateLevel,
       handleWinLevel: actions.handleWinLevel,
       handleCreatePiece,
