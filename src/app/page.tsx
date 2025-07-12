@@ -9,13 +9,15 @@ import { LevelCompleteDialog } from '@/components/game/level-complete-dialog';
 import { GameOverDialog } from '@/components/game/game-over-dialog';
 import { HowToPlayDialog } from '@/components/game/how-to-play-dialog';
 import { useGame } from '@/hooks/use-game';
+import { useTranslation } from '@/context/i18n';
 
 export default function Home() {
   const {
     state,
     actions,
-    getPieceDisplayName,
   } = useGame();
+  
+  const { getPieceDisplayName } = useTranslation();
 
   const {
     level,

@@ -7,6 +7,7 @@ import { dbg } from '@/locales/dbg';
 import { ua } from '@/locales/ua';
 import { ja } from '@/locales/ja';
 import type { Locale } from '@/locales/en';
+import type { Piece } from '@/types';
 
 const locales: { [key: string]: Locale } = { en, dbg, ua, ja };
 const I18N_STORAGE_KEY = 'chess-crawl-locale';
@@ -17,6 +18,7 @@ interface I18nContextType {
   locale: LocaleKey;
   setLocale: (locale: LocaleKey) => void;
   t: (key: string, values?: Record<string, string | number>) => string;
+  getPieceDisplayName: (name: Piece['name']) => string;
 }
 
 const I18nContext = createContext<I18nContextType | null>(null);
@@ -56,11 +58,27 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     return translation;
   }, [locale]);
   
+  const getPieceDisplayName = useCallback((name: Piece['name']) => {
+    if (typeof name === 'string') {
+        return name; // For backward compatibility with old saves
+    }
+    if (name) {
+        const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
+        const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
+        if (locale === 'ja') {
+            return `${lastName} ${firstName}`;
+        }
+        return `${firstName} ${lastName}`;
+    }
+    return t('pieces.Unnamed');
+  }, [t, locale]);
+
   const value = useMemo(() => ({
     locale,
     setLocale,
     t,
-  }), [locale, setLocale, t]);
+    getPieceDisplayName
+  }), [locale, setLocale, t, getPieceDisplayName]);
 
   return (
     <I18nContext.Provider value={value}>

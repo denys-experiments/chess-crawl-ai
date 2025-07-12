@@ -1,5 +1,7 @@
 
-import { useState, useCallback, useMemo } from 'react';
+"use client";
+
+import { useState, useMemo } from 'react';
 import type { Piece, PieceType, HistoryEntry, HistoryLogEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -56,24 +58,9 @@ interface GameHudProps {
 }
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
-    const { t, locale } = useTranslation();
+    const { t, getPieceDisplayName } = useTranslation();
 
-    const getDisplayName = (name: Piece['name']) => {
-        if (typeof name === 'string') {
-            return name; // For backward compatibility with old saves
-        }
-        if (name) {
-            const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
-            const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
-            if (locale === 'ja') {
-                return `${lastName} ${firstName}`;
-            }
-            return `${firstName} ${lastName}`;
-        }
-        return t('pieces.Unnamed');
-    };
-
-    const displayName = getDisplayName(piece.name);
+    const displayName = getPieceDisplayName(piece.name);
     const cosmeticName = piece.cosmetic
         ? t(`cosmetics.${piece.cosmetic}`)
         : t('cosmetics.none');
@@ -106,7 +93,7 @@ export function GameHud(props: GameHudProps) {
     currentTurn, level, inventory, history, isEnemyThinking, 
     selectedPiece, onRestart, onShowHelp, isSoundEnabled, onToggleSound 
   } = props;
-  const { t, locale, setLocale } = useTranslation();
+  const { t, locale, setLocale, getPieceDisplayName } = useTranslation();
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
@@ -117,21 +104,6 @@ export function GameHud(props: GameHudProps) {
     return t('hud.enemyTurn', { faction: t(`factions.${currentTurn}`) });
   };
   
-  const getPieceDisplayName = useCallback((name: Piece['name']) => {
-    if (typeof name === 'string') {
-        return name; // For backward compatibility with old saves
-    }
-    if (name) {
-        const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
-        const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
-        if (locale === 'ja') {
-            return `${lastName} ${firstName}`;
-        }
-        return `${firstName} ${lastName}`;
-    }
-    return t('pieces.Unnamed');
-  }, [t, locale]);
-
   const renderedHistory = useMemo(() => {
     return history.map((entry) => {
         if (typeof entry === 'string') {
@@ -148,7 +120,12 @@ export function GameHud(props: GameHudProps) {
                 const newKey = valueKey.slice(0, -3); // remove 'Key' suffix
                 translatedValues[newKey] = t(rawValue as string);
             } else if (valueKey === 'name') {
-                translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
+                 // For name objects, we use getPieceDisplayName, for strings, we pass them as-is
+                 if (typeof rawValue === 'object' && rawValue !== null) {
+                    translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
+                 } else {
+                    translatedValues[valueKey] = rawValue as string;
+                 }
             } else {
                 translatedValues[valueKey] = rawValue as string | number;
             }
