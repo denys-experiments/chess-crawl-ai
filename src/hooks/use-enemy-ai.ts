@@ -6,9 +6,14 @@ import type { UseGameStateReturn } from './use-game-state';
 import type { Piece, Tile, Position, HistoryEntry } from '@/types';
 import { getValidMoves } from '@/lib/game-logic';
 import { playSound } from '@/lib/sounds';
+import { useTranslation } from '@/context/i18n';
 
-export function useEnemyAI(state: UseGameStateReturn, getPieceDisplayName: (name: Piece['name']) => string, advanceTurn: () => void) {
-    const { get, setters } = state;
+export function useEnemyAI(
+    getState: UseGameStateReturn['get'],
+    setters: UseGameStateReturn['setters'],
+    advanceTurn: () => void
+) {
+    const { t, getPieceDisplayName } = useTranslation();
 
     const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
         let historyEntry: HistoryEntry;
@@ -60,7 +65,7 @@ export function useEnemyAI(state: UseGameStateReturn, getPieceDisplayName: (name
     }, [setters, advanceTurn, getPieceDisplayName]);
 
     const runEnemyTurn = useCallback((factionColor: string) => {
-        const { board, isSoundEnabled } = get();
+        const { board, isSoundEnabled } = getState();
         if (!board) return;
         setters.setIsEnemyThinking(true);
 
@@ -95,12 +100,8 @@ export function useEnemyAI(state: UseGameStateReturn, getPieceDisplayName: (name
                 const targetTile = board[move.y][move.x];
 
                 if (targetTile?.type === 'chest') {
-                    score = -Infinity;
-                    allPossibleMoves.push({ piece: enemy, move, score });
-                    continue;
-                }
-
-                if (targetTile?.type === 'piece' && targetTile.color !== enemy.color) {
+                    score = -Infinity; // Heavily penalize moving to a chest
+                } else if (targetTile?.type === 'piece' && targetTile.color !== enemy.color) {
                     let captureValue = 0;
                     switch (targetTile.piece) {
                         case 'Queen': captureValue = 90; break;
@@ -153,7 +154,7 @@ export function useEnemyAI(state: UseGameStateReturn, getPieceDisplayName: (name
             setters.addToHistory({ 
                 key: 'history.enemyNoMoves', 
                 values: { 
-                    factionKey: `factions.${factionColor}` 
+                    factionKey: `factions.${t(`factions.${factionColor}`)}`
                 } 
             });
             setters.setIsEnemyThinking(false);
@@ -161,8 +162,22 @@ export function useEnemyAI(state: UseGameStateReturn, getPieceDisplayName: (name
             return;
         }
 
-        allPossibleMoves.sort((a, b) => b.score - a.score);
-        const bestMove = allPossibleMoves[0];
+        // Filter out moves with -Infinity score (like moving to a chest)
+        const validMoves = allPossibleMoves.filter(move => move.score > -Infinity);
+        if (validMoves.length === 0) {
+             setters.addToHistory({ 
+                key: 'history.enemyNoMoves', 
+                values: { 
+                    factionKey: `factions.${t(`factions.${factionColor}`)}`
+                } 
+            });
+            setters.setIsEnemyThinking(false);
+            advanceTurn();
+            return;
+        }
+
+        validMoves.sort((a, b) => b.score - a.score);
+        const bestMove = validMoves[0];
 
         const { piece: pieceToMove, move } = bestMove;
         const from = { x: pieceToMove.x, y: pieceToMove.y };
@@ -206,7 +221,7 @@ export function useEnemyAI(state: UseGameStateReturn, getPieceDisplayName: (name
         setTimeout(() => {
             finishEnemyTurn(factionColor, newPieceState, targetTile);
         }, 300);
-    }, [get, setters, advanceTurn, finishEnemyTurn]);
+    }, [getState, setters, advanceTurn, finishEnemyTurn, t]);
     
     return { runEnemyTurn };
 }

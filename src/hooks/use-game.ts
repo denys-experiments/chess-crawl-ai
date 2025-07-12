@@ -12,42 +12,17 @@ import { initializeBoard } from '@/lib/game-logic';
 import { generateRandomName } from '@/lib/names';
 
 export function useGame() {
-  const state = useGameState();
+  const stateAndSetters = useGameState();
+  const { get: getState, setters } = stateAndSetters;
+
   const { toast } = useToast();
   const { t, getPieceDisplayName } = useTranslation();
 
-  const {
-    level,
-    isLoading,
-    isGameOver,
-    isLevelComplete,
-    board,
-    currentTurn,
-    history,
-    inventory,
-    playerPieces,
-  } = state.get();
-  
-  const {
-      setBoard,
-      setPlayerPieces,
-      setEnemyPieces,
-      setIsKingInCheck,
-      setIsLevelComplete,
-      setIsGameOver,
-      setIsLoading,
-      setCurrentTurn,
-      setHistory,
-      addToHistory,
-      appendToDebugLog
-  } = state.setters;
-  
-
-  const actions = useGameActions(state, getPieceDisplayName);
-  const { runEnemyTurn } = useEnemyAI(state, getPieceDisplayName, actions.advanceTurn);
+  const gameActions = useGameActions(getState, setters);
+  const { runEnemyTurn } = useEnemyAI(getState, setters, gameActions.advanceTurn);
   
   const setupLevel = useCallback((levelToSetup: number, piecesToCarry: Piece[]) => {
-    setIsLoading(true);
+    setters.setIsLoading(true);
 
     let finalPieces = piecesToCarry;
     let isNewGame = false;
@@ -62,13 +37,13 @@ export function useGame() {
     }
 
     if (isNewGame) {
-      setHistory([]);
-      addToHistory({ key: 'history.levelStart', values: { level: 1 } });
+      setters.setHistory([]);
+      setters.addToHistory({ key: 'history.levelStart', values: { level: 1 } });
     } else {
-      addToHistory({ key: 'history.levelStart', values: { level: levelToSetup } });
+      setters.addToHistory({ key: 'history.levelStart', values: { level: levelToSetup } });
       const carriedOverPieces = piecesToCarry.filter(p => p.piece !== 'King');
       carriedOverPieces.forEach(piece => {
-        addToHistory({
+        setters.addToHistory({
           key: 'history.pieceCarriedOver',
           values: {
             name: getPieceDisplayName(piece.name),
@@ -78,17 +53,17 @@ export function useGame() {
       });
     }
     
-    state.setters.setLevel(levelToSetup);
+    setters.setLevel(levelToSetup);
     
     const { board: newBoard } = initializeBoard(levelToSetup, finalPieces);
     
-    actions.checkForAllyRescueOnSetup(newBoard, levelToSetup);
+    gameActions.checkForAllyRescueOnSetup(newBoard, levelToSetup);
     
-    setBoard(newBoard);
-    setCurrentTurn('player');
+    setters.setBoard(newBoard);
+    setters.setCurrentTurn('player');
     
-    setIsLevelComplete(false);
-    state.setters.setSelectedPiece(null);
+    setters.setIsLevelComplete(false);
+    setters.setSelectedPiece(null);
 
     let log = '';
     if (isNewGame) {
@@ -104,22 +79,22 @@ export function useGame() {
     }));
     log += `Player pieces on board: ${playerPiecesOnBoard.length}\n`;
     log += JSON.stringify(playerPiecesOnBoard.map(p => ({ piece: p.piece, name: getPieceDisplayName(p.name), id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
-    appendToDebugLog(log);
+    setters.appendToDebugLog(log);
     
-    setIsLoading(false);
-  }, [state.setters, addToHistory, getPieceDisplayName, appendToDebugLog, actions]);
+    setters.setIsLoading(false);
+  }, [setters, getPieceDisplayName, gameActions]);
   
   useEffect(() => {
     const savedGame = localStorage.getItem(SAVE_GAME_KEY);
     if (savedGame) {
         try {
             const parsedData = JSON.parse(savedGame);
-            state.setters.setLevel(parsedData.level);
-            setBoard(parsedData.board);
-            setCurrentTurn(parsedData.currentTurn);
-            setHistory(parsedData.history || []);
-            state.setters.setInventory(parsedData.inventory || { pieces: [], cosmetics: [] });
-            setIsLoading(false);
+            setters.setLevel(parsedData.level);
+            setters.setBoard(parsedData.board);
+            setters.setCurrentTurn(parsedData.currentTurn);
+            setters.setHistory(parsedData.history || []);
+            setters.setInventory(parsedData.inventory || { pieces: [], cosmetics: [] });
+            setters.setIsLoading(false);
         } catch (error) {
             console.error("Failed to load saved game, starting new game.", error);
             localStorage.removeItem(SAVE_GAME_KEY);
@@ -128,9 +103,14 @@ export function useGame() {
     } else {
         setupLevel(1, []);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    const {
+        level, board, currentTurn, history, inventory, isLoading, isGameOver, isLevelComplete
+    } = getState();
+
     if (isLoading || isGameOver || isLevelComplete) {
         return;
     }
@@ -142,9 +122,10 @@ export function useGame() {
         inventory,
     };
     localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
-  }, [board, currentTurn, history, level, inventory, isLoading, isGameOver, isLevelComplete]);
+  }, [getState]);
 
   useEffect(() => {
+    const { board, level, isLoading, isLevelComplete, isGameOver, isKingInCheck } = getState();
     if (!board) return;
 
     const newPlayerPieces: Piece[] = [];
@@ -161,52 +142,54 @@ export function useGame() {
         }
       });
     });
-    setPlayerPieces(newPlayerPieces);
-    setEnemyPieces(newEnemyPieces);
+    setters.setPlayerPieces(newPlayerPieces);
+    setters.setEnemyPieces(newEnemyPieces);
     
     const playerKing = newPlayerPieces.find(p => p.piece === 'King');
     if (playerKing) {
         const enemyFactions = Array.from(new Set(newEnemyPieces.map(p => p.color)));
-        const inCheck = actions.isSquareAttackedBy({ x: playerKing.x, y: playerKing.y }, board, enemyFactions);
-        if (inCheck && !state.get().isKingInCheck) {
-            if (actions.isSoundEnabled) actions.playSound('check');
+        const inCheck = gameActions.isSquareAttackedBy({ x: playerKing.x, y: playerKing.y }, board, enemyFactions);
+        if (inCheck && !isKingInCheck) {
+            if(getState().isSoundEnabled) gameActions.playSound('check');
         }
-        setIsKingInCheck(inCheck);
+        setters.setIsKingInCheck(inCheck);
     } else {
-        setIsKingInCheck(false);
+        setters.setIsKingInCheck(false);
     }
 
     if (level > 0 && !isLoading) {
       if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0 && !isLevelComplete) {
-        if (actions.isSoundEnabled) actions.playSound('win');
-        setIsLevelComplete(true);
+        if(getState().isSoundEnabled) gameActions.playSound('win');
+        setters.setIsLevelComplete(true);
       } else if ((newPlayerPieces.length === 0 || !playerKing) && !isGameOver) {
-        if (actions.isSoundEnabled) actions.playSound('lose');
-        setIsGameOver(true);
+        if(getState().isSoundEnabled) gameActions.playSound('lose');
+        setters.setIsGameOver(true);
         localStorage.removeItem(SAVE_GAME_KEY);
       }
     }
-  }, [board, level, isLoading, state.get().isKingInCheck, isLevelComplete, isGameOver, setPlayerPieces, setEnemyPieces, setIsKingInCheck, setIsLevelComplete, setIsGameOver, actions]);
+  }, [getState, setters, gameActions]);
   
   useEffect(() => {
-    if (state.get().currentTurn !== 'player' && !state.get().isEnemyThinking && !isGameOver && !isLevelComplete) {
-      runEnemyTurn(state.get().currentTurn);
+    const { currentTurn, isEnemyThinking, isGameOver, isLevelComplete } = getState();
+    if (currentTurn !== 'player' && !isEnemyThinking && !isGameOver && !isLevelComplete) {
+      runEnemyTurn(currentTurn);
     }
-  }, [state.get().currentTurn, state.get().isEnemyThinking, runEnemyTurn, isGameOver, isLevelComplete]);
+  }, [getState, runEnemyTurn]);
   
   const restartGame = () => {
     localStorage.removeItem(SAVE_GAME_KEY);
-    setIsLoading(true);
-    state.setters.setDebugLog('');
-    state.setters.setSelectedPiece(null);
-    state.setters.setAvailableMoves([]);
-    state.setters.setInventory({ pieces: [], cosmetics: [] });
-    setHistory([]);
-    setIsGameOver(false);
+    setters.setIsLoading(true);
+    setters.setDebugLog('');
+    setters.setSelectedPiece(null);
+    setters.setAvailableMoves([]);
+    setters.setInventory({ pieces: [], cosmetics: [] });
+    setters.setHistory([]);
+    setters.setIsGameOver(false);
     setupLevel(1, []);
   };
   
   const handleCarryOver = (piecesToCarry: Piece[]) => {
+      const { playerPieces, level } = getState();
       const king = playerPieces.find(p => p.piece === 'King');
       
       const clonedCarriedPieces = piecesToCarry.map(p => ({
@@ -229,27 +212,29 @@ export function useGame() {
           });
       }
       
-      state.setters.setInventory(prev => ({...prev, pieces: finalPiecesForNextLevel}));
+      setters.setInventory(prev => ({...prev, pieces: finalPiecesForNextLevel}));
       setupLevel(level + 1, finalPiecesForNextLevel);
   };
 
   // --- CHEAT FUNCTIONS ---
   const handleRegenerateLevel = (width: number, height: number, numFactions: number) => {
+    const { board, playerPieces, level } = getState();
     if (!board) return;
-    setIsLoading(true);
+    setters.setIsLoading(true);
     const king = playerPieces.find(p => p.piece === 'King');
     const { board: newBoard, factions } = initializeBoard(level, king ? [king] : [], { width, height, numFactions });
-    setBoard(newBoard);
-    state.setters.setSelectedPiece(null);
-    state.setters.setAvailableMoves([]);
-    setCurrentTurn('player');
-    setHistory([]);
-    setIsLevelComplete(false);
-    setIsGameOver(false);
+    setters.setBoard(newBoard);
+    setters.setSelectedPiece(null);
+    setters.setAvailableMoves([]);
+    setters.setCurrentTurn('player');
+    setters.setHistory([]);
+    setters.setIsLevelComplete(false);
+    setters.setIsGameOver(false);
     toast({ title: t('toast.cheatActivated'), description: t('toast.levelRegenerated', { width, height, factions: factions.length }) });
   }
 
   const handleCreatePiece = (pieceType: PieceType) => {
+    const { board, playerPieces, level } = getState();
     if (!board) return;
     const king = playerPieces.find(p => p.piece === 'King');
     if (!king) {
@@ -262,7 +247,7 @@ export function useGame() {
         { x: kingX, y: kingY - 1 }, { x: kingX, y: kingY + 1 },
         { x: kingX - 1, y: kingY - 1 }, { x: kingX + 1, y: kingY - 1 },
         { x: kingX - 1, y: kingY + 1 }, { x: kingX + 1, y: kingY + 1 },
-    ].filter(p => actions.isWithinBoard(p.x, p.y, board) && !board[p.y][p.x]);
+    ].filter(p => gameActions.isWithinBoard(p.x, p.y, board) && !board[p.y][p.x]);
 
     if (possibleSpawns.length === 0) {
         toast({ title: t('toast.cheatFailed'), description: t('toast.noEmptySpace'), variant: "destructive" });
@@ -282,11 +267,12 @@ export function useGame() {
         discoveredOnLevel: level,
         captures: 0,
     };
-    setBoard(newBoard);
+    setters.setBoard(newBoard);
     toast({ title: t('toast.cheatActivated'), description: t('toast.pieceCreated', { pieceType: t(`pieces.${pieceType}`) }) });
   }
 
   const handlePromotePawn = () => {
+    const { board, playerPieces, level } = getState();
     if (!board) return;
     const pawns = playerPieces.filter(p => p.piece === 'Pawn');
     if (pawns.length === 0) {
@@ -294,7 +280,7 @@ export function useGame() {
         return;
     }
     const randomPawn = pawns[Math.floor(Math.random() * pawns.length)];
-    const newPieceType = actions.getPromotionPiece(level, playerPieces);
+    const newPieceType = gameActions.getPromotionPiece(level, playerPieces);
     
     const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
     const pawnToPromote = newBoard[randomPawn.y][randomPawn.x];
@@ -304,26 +290,24 @@ export function useGame() {
             piece: newPieceType,
             direction: undefined,
         };
-        setBoard(newBoard);
+        setters.setBoard(newBoard);
         toast({ title: t('toast.cheatActivated'), description: t('toast.pawnPromoted', { pieceType: t(`pieces.${newPieceType}`) }) });
     }
   }
-  
-  const { isSoundEnabled, toggleSound } = actions;
 
   return {
-    state: { ...state.get(), isSoundEnabled },
+    state: getState(),
     actions: {
-      handleTileClick: actions.handleTileClick,
+      handleTileClick: gameActions.handleTileClick,
       restartGame,
       handleCarryOver,
-      setIsHelpOpen: state.setters.setIsHelpOpen,
-      setIsSoundEnabled: toggleSound,
+      setIsHelpOpen: setters.setIsHelpOpen,
+      setIsSoundEnabled: setters.setIsSoundEnabled,
       handleRegenerateLevel,
-      handleWinLevel: actions.handleWinLevel,
+      handleWinLevel: gameActions.handleWinLevel,
       handleCreatePiece,
       handlePromotePawn,
-      handleAwardCosmetic: actions.handleAwardCosmetic,
+      handleAwardCosmetic: gameActions.handleAwardCosmetic,
     },
     getPieceDisplayName,
   }

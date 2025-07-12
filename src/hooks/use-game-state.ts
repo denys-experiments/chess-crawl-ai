@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Piece, Board, Position, AvailableMove, HistoryEntry } from '@/types';
 
 export const SAVE_GAME_KEY = 'chess-crawl-save-game';
@@ -25,7 +25,22 @@ export function useGameState() {
   const [debugLog, setDebugLog] = useState('');
   const [currentTurn, setCurrentTurn] = useState('player');
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const [isSoundEnabled, setIsSoundEnabledState] = useState(true);
+
+  useEffect(() => {
+    const savedSoundSetting = localStorage.getItem(SOUND_ENABLED_KEY);
+    if (savedSoundSetting !== null) {
+      setIsSoundEnabledState(JSON.parse(savedSoundSetting));
+    }
+  }, []);
+
+  const setIsSoundEnabled = useCallback((value: boolean | ((prevState: boolean) => boolean)) => {
+    setIsSoundEnabledState(prev => {
+      const newState = typeof value === 'function' ? value(prev) : value;
+      localStorage.setItem(SOUND_ENABLED_KEY, JSON.stringify(newState));
+      return newState;
+    });
+  }, []);
 
   const addToHistory = useCallback((entry: HistoryEntry) => {
     setHistory(prev => [entry, ...prev].slice(0, 50));
@@ -35,7 +50,7 @@ export function useGameState() {
     setDebugLog(prev => `${prev}\n\n${message}`.trim());
   }, []);
 
-  const get = () => ({
+  const get = useCallback(() => ({
     level,
     board,
     selectedPiece,
@@ -54,7 +69,12 @@ export function useGameState() {
     currentTurn,
     isHelpOpen,
     isSoundEnabled,
-  });
+  }), [
+    level, board, selectedPiece, availableMoves, playerPieces, enemyPieces,
+    inventory, history, isLevelComplete, isGameOver, isLoading,
+    isEnemyThinking, isPlayerMoving, isKingInCheck, debugLog, currentTurn,
+    isHelpOpen, isSoundEnabled
+  ]);
 
   const setters = {
     setLevel,

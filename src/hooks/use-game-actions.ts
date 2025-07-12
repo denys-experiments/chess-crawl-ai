@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import { useCallback, useMemo, useRef, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from '@/context/i18n';
 import type { UseGameStateReturn } from './use-game-state';
@@ -9,31 +9,12 @@ import type { Piece, Board, Position, PieceType, Tile, HistoryEntry } from '@/ty
 import { getValidMoves as getValidMovesFromLogic, isWithinBoard as isWithinBoardFromLogic, isSquareAttackedBy as isSquareAttackedByFromLogic } from '@/lib/game-logic';
 import { generateRandomName } from '@/lib/names';
 import { playSound as playSoundLogic, initAudioContext } from '@/lib/sounds';
-import { SOUND_ENABLED_KEY } from './use-game-state';
 
-export function useGameActions(state: UseGameStateReturn, getPieceDisplayName: (name: Piece['name']) => string) {
-    const { get: getState, setters } = state;
+export function useGameActions(getState: UseGameStateReturn['get'], setters: UseGameStateReturn['setters']) {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, getPieceDisplayName } = useTranslation();
     const audioInitialized = useRef(false);
     const clickLock = useRef(false);
-
-    const [isSoundEnabled, setIsSoundEnabled] = useState(true);
-
-    useEffect(() => {
-        const savedSoundSetting = localStorage.getItem(SOUND_ENABLED_KEY);
-        if (savedSoundSetting !== null) {
-          setIsSoundEnabled(JSON.parse(savedSoundSetting));
-        }
-    }, []);
-
-    const toggleSound = useCallback(() => {
-        setIsSoundEnabled(prev => {
-            const newState = !prev;
-            localStorage.setItem(SOUND_ENABLED_KEY, JSON.stringify(newState));
-            return newState;
-        });
-    }, []);
     
     // --- Re-export logic functions for easy access ---
     const getValidMoves = getValidMovesFromLogic;
@@ -51,7 +32,7 @@ export function useGameActions(state: UseGameStateReturn, getPieceDisplayName: (
         }
         }));
         return Array.from(factions).sort();
-    }, [getState().board]);
+    }, [getState]);
   
     const turnOrder = useMemo(() => ['player', ...activeEnemyFactions], [activeEnemyFactions]);
 
@@ -150,7 +131,7 @@ export function useGameActions(state: UseGameStateReturn, getPieceDisplayName: (
 
 
     const movePiece = useCallback((from: Position, to: Position, onComplete: () => void) => {
-        const { board, level, inventory } = getState();
+        const { board, level, inventory, isSoundEnabled } = getState();
         if (!board) return;
 
         const newBoard = board.map(row => row.map(tile => tile ? {...tile} : null));
@@ -165,7 +146,7 @@ export function useGameActions(state: UseGameStateReturn, getPieceDisplayName: (
             newPieceState.captures = (newPieceState.captures || 0) + 1;
             historyEntry = {
                 key: 'history.playerCapture',
-                values: { name: getPieceDisplayName(pieceToMove.name), pieceKey: `pieces.${pieceToMove.piece}`, factionKey: `factions.${targetTile.color}`, targetPieceKey: `pieces.${targetTile.piece}`, x: to.x + 1, y: to.y + 1 },
+                values: { name: getPieceDisplayName(pieceToMove.name), pieceKey: `pieces.${pieceToMove.piece}`, factionKey: `factions.${t(`factions.${targetTile.color}`)}`, targetPieceKey: `pieces.${targetTile.piece}`, x: to.x + 1, y: to.y + 1 },
             };
         } else if (targetTile?.type === 'chest') {
             if (isSoundEnabled) playSound('move');
@@ -220,7 +201,7 @@ export function useGameActions(state: UseGameStateReturn, getPieceDisplayName: (
             advanceTurn();
             onComplete();
         }, 300);
-    }, [getState, setters, toast, t, getPieceDisplayName, checkForAllyRescue, advanceTurn, getPromotionPiece, playSound, isSoundEnabled]);
+    }, [getState, setters, toast, t, getPieceDisplayName, checkForAllyRescue, advanceTurn, getPromotionPiece, playSound]);
 
     const handleTileClick = useCallback((x: number, y: number) => {
         if (!audioInitialized.current) {
@@ -292,7 +273,7 @@ export function useGameActions(state: UseGameStateReturn, getPieceDisplayName: (
         } else {
             setters.setAvailableMoves([]);
         }
-    }, [getState().selectedPiece, getState().board, getState().currentTurn, getState().enemyPieces, setters]);
+    }, [getState, setters, getValidMoves, isSquareAttackedBy]);
 
 
     const handleWinLevel = () => {
@@ -324,8 +305,6 @@ export function useGameActions(state: UseGameStateReturn, getPieceDisplayName: (
     }
 
     return {
-        isSoundEnabled,
-        toggleSound,
         handleTileClick,
         movePiece,
         advanceTurn,
