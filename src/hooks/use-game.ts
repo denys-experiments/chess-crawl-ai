@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useCallback } from 'react';
-import type { Piece, PieceType, HistoryEntry } from '@/types';
+import type { Piece, PieceType } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from '@/context/i18n';
 import { useGameState } from './use-game-state';
@@ -16,8 +16,8 @@ export function useGame() {
   const { get: getState, setters } = useGameState();
   const { toast } = useToast();
   const { t } = useTranslation();
+  
   const { saveGame, loadGame, clearSave } = useGamePersistence(getState, setters);
-
   const gameActions = useGameActions(getState, setters, saveGame);
   const { runEnemyTurn } = useEnemyAI(getState, setters, gameActions.advanceTurn);
   
@@ -285,6 +285,7 @@ export function useGame() {
       handleCreatePiece,
       handlePromotePawn,
       handleAwardCosmetic: gameActions.handleAwardCosmetic,
+      calculateAvailableMoves: gameActions.calculateAvailableMoves,
     }
   }
 }
