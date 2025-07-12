@@ -18,7 +18,7 @@ function createHistoryEntry(
 }
 
 
-export function useGameActions(getState: UseGameStateReturn['get'], setters: UseGameStateReturn['setters']) {
+export function useGameActions(getState: UseGameStateReturn['get'], setters: UseGameStateReturn['setters'], saveGame: () => void) {
     const { toast } = useToast();
     const { t } = useTranslation();
     const audioInitialized = useRef(false);
@@ -46,11 +46,13 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
 
     const advanceTurn = useCallback(() => {
         setters.setCurrentTurn(prevTurn => {
-        const currentIndex = turnOrder.indexOf(prevTurn);
-        const nextIndex = (currentIndex + 1) % turnOrder.length;
-        return turnOrder[nextIndex];
+            const currentIndex = turnOrder.indexOf(prevTurn);
+            const nextIndex = (currentIndex + 1) % turnOrder.length;
+            const newTurn = turnOrder[nextIndex]
+            saveGame();
+            return newTurn;
         });
-    }, [turnOrder, setters]);
+    }, [turnOrder, setters, saveGame]);
 
     const getPromotionPiece = useCallback((level: number, playerPieces: Piece[]): PieceType => {
         const promotionOptions: { piece: PieceType; baseWeight: number }[] = [
@@ -306,6 +308,7 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
             (newBoard[randomPiece.y][randomPiece.x] as Piece).cosmetic = newCosmetic;
             setters.setBoard(newBoard);
             toast({ title: t('toast.cheatActivated'), description: t('toast.cosmeticAwarded', { piece: t(`pieces.${pieceToDecorate.piece}`), cosmetic: cosmeticName }) });
+            saveGame();
         }
     }
 
@@ -323,5 +326,3 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
         createHistoryEntry,
     };
 }
-
-    

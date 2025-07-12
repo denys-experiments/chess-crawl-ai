@@ -2,12 +2,13 @@
 "use client";
 
 import { useEffect, useCallback } from 'react';
-import type { Piece, PieceType, HistoryEntry } from '@/types';
+import type { Piece, PieceType } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from '@/context/i18n';
-import { useGameState, SAVE_GAME_KEY } from './use-game-state';
+import { useGameState } from './use-game-state';
 import { useGameActions } from './use-game-actions';
 import { useEnemyAI } from './use-enemy-ai';
+import { useGamePersistence } from './use-game-persistence';
 import { initializeBoard } from '@/lib/game-logic';
 import { generateRandomName } from '@/lib/names';
 
@@ -18,7 +19,9 @@ export function useGame() {
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const gameActions = useGameActions(getState, setters);
+  const { saveGame, loadGame, clearSave } = useGamePersistence(getState, setters);
+
+  const gameActions = useGameActions(getState, setters, saveGame);
   const { runEnemyTurn } = useEnemyAI(getState, setters, gameActions.advanceTurn);
   
   const setupLevel = useCallback((levelToSetup: number, piecesToCarry: Piece[]) => {
@@ -81,47 +84,23 @@ export function useGame() {
     setters.appendToDebugLog(log);
     
     setters.setIsLoading(false);
-  }, [setters, gameActions, t]);
+    
+    saveGame({
+        level: levelToSetup,
+        board: newBoard,
+        currentTurn: 'player',
+        history: getState().history,
+        inventory: {pieces: finalPieces, cosmetics: getState().inventory.cosmetics}
+    });
+
+  }, [setters, gameActions, t, saveGame, getState]);
   
   useEffect(() => {
-    const savedGame = localStorage.getItem(SAVE_GAME_KEY);
-    if (savedGame) {
-        try {
-            const parsedData = JSON.parse(savedGame);
-            setters.setLevel(parsedData.level);
-            setters.setBoard(parsedData.board);
-            setters.setCurrentTurn(parsedData.currentTurn);
-            setters.setHistory(parsedData.history || []);
-            setters.setInventory(parsedData.inventory || { pieces: [], cosmetics: [] });
-            setters.setIsLoading(false);
-        } catch (error) {
-            console.error("Failed to load saved game, starting new game.", error);
-            localStorage.removeItem(SAVE_GAME_KEY);
-            setupLevel(1, []);
-        }
-    } else {
-        setupLevel(1, []);
+    if (!loadGame()) {
+      setupLevel(1, []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const {
-        level, board, currentTurn, history, inventory, isLoading, isGameOver, isLevelComplete
-    } = getState();
-
-    if (isLoading || isGameOver || isLevelComplete) {
-        return;
-    }
-    const gameState = {
-        level,
-        board,
-        currentTurn,
-        history,
-        inventory,
-    };
-    localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
-  }, [getState]);
 
   useEffect(() => {
     const { board, level, isLoading, isLevelComplete, isGameOver, isKingInCheck } = getState();
@@ -163,10 +142,10 @@ export function useGame() {
       } else if ((newPlayerPieces.length === 0 || !playerKing) && !isGameOver) {
         if(getState().isSoundEnabled) gameActions.playSound('lose');
         setters.setIsGameOver(true);
-        localStorage.removeItem(SAVE_GAME_KEY);
+        clearSave();
       }
     }
-  }, [getState, setters, gameActions]);
+  }, [getState, setters, gameActions, clearSave]);
   
   useEffect(() => {
     const { currentTurn, isEnemyThinking, isGameOver, isLevelComplete } = getState();
@@ -176,7 +155,7 @@ export function useGame() {
   }, [getState, runEnemyTurn]);
   
   const restartGame = () => {
-    localStorage.removeItem(SAVE_GAME_KEY);
+    clearSave();
     setters.setIsLoading(true);
     setters.setDebugLog('');
     setters.setSelectedPiece(null);
@@ -211,7 +190,8 @@ export function useGame() {
           });
       }
       
-      setters.setInventory(prev => ({...prev, pieces: finalPiecesForNextLevel}));
+      const newInventory = { pieces: finalPiecesForNextLevel, cosmetics: getState().inventory.cosmetics };
+      setters.setInventory(newInventory);
       setupLevel(level + 1, finalPiecesForNextLevel);
   };
 
@@ -311,5 +291,3 @@ export function useGame() {
     }
   }
 }
-
-    
