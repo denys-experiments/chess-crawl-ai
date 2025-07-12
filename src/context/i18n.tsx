@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useState, useContext, useCallback, useMemo, useEffect } from 'react';
+import React, { createContext, useState, useContext, useCallback, useMemo, useEffect, useRef } from 'react';
 import { en } from '@/locales/en';
 import { dbg } from '@/locales/dbg';
 import { ua } from '@/locales/ua';
@@ -29,6 +29,8 @@ function getValueFromPath(obj: any, path: string): string | undefined {
 
 export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
   const [locale, setLocaleState] = useState<LocaleKey>('en');
+  const localeRef = useRef(locale);
+  localeRef.current = locale;
 
   useEffect(() => {
     const savedLocale = localStorage.getItem(I1N_STORAGE_KEY) as LocaleKey | null;
@@ -45,7 +47,7 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const t = useCallback((key: string, values?: Record<string, string | number>): string => {
-    const languageStrings = locales[locale] || locales['en'];
+    const languageStrings = locales[localeRef.current] || locales['en'];
     let translation = getValueFromPath(languageStrings, key) || key;
 
     if (values) {
@@ -56,7 +58,7 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     return translation;
-  }, [locale]);
+  }, []);
   
   const getPieceDisplayName = useCallback((name: Piece['name']) => {
     if (typeof name === 'string') {
@@ -65,13 +67,13 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
     if (name) {
         const firstName = t(`nameParts.firstNames.${name.firstNameIndex}`);
         const lastName = t(`nameParts.lastNames.${name.lastNameIndex}`);
-        if (locale === 'ja') {
+        if (localeRef.current === 'ja') {
             return `${lastName} ${firstName}`;
         }
         return `${firstName} ${lastName}`;
     }
     return t('pieces.Unnamed');
-  }, [t, locale]);
+  }, [t]);
 
   const value = useMemo(() => ({
     locale,
