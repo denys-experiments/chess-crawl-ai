@@ -106,6 +106,10 @@ export function useGame() {
       runEnemyTurn(currentTurn);
     }
   }, [getState, runEnemyTurn]);
+
+  useEffect(() => {
+    gameActions.calculateAvailableMoves();
+  }, [getState().selectedPiece, getState().currentTurn, getState().board, gameActions.calculateAvailableMoves]);
   
   const restartGame = () => {
     clearSave();
@@ -115,6 +119,7 @@ export function useGame() {
     setters.setAvailableMoves([]);
     setters.setInventory({ pieces: [], cosmetics: [] });
     setters.setHistory([]);
+    setters.setIsLevelComplete(false);
     setters.setIsGameOver(false);
     setupLevel(1, []);
   };
@@ -241,7 +246,6 @@ export function useGame() {
       handleCreatePiece,
       handlePromotePawn,
       handleAwardCosmetic: gameActions.handleAwardCosmetic,
-      calculateAvailableMoves: gameActions.calculateAvailableMoves,
     }
   }
 }
