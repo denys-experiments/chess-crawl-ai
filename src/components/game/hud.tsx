@@ -97,12 +97,12 @@ export function GameHud(props: GameHudProps) {
   const [isCheatsOpen, setIsCheatsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
-  const getTurnText = () => {
+  const turnText = useMemo(() => {
     if (currentTurn === 'player') {
       return t('hud.playerTurn');
     }
     return t('hud.enemyTurn', { faction: t(`factions.${currentTurn}`) });
-  };
+  }, [currentTurn, t]);
   
   const renderedHistory = useMemo(() => {
     return history.map((entry) => {
@@ -154,18 +154,18 @@ export function GameHud(props: GameHudProps) {
             </div>
           </div>
           <div className="flex items-center justify-between pt-2">
-            <CardDescription className="flex items-center gap-2 p-0">
+            <div className="flex items-center gap-2">
                 {isEnemyThinking ? (
                     <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>{t('hud.enemyThinking')}</span>
+                        <CardDescription>{t('hud.enemyThinking')}</CardDescription>
                     </>
                 ) : (
-                    <span className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
-                        {getTurnText()}
-                    </span>
+                   <CardDescription className={`text-xl font-semibold ${currentTurn === 'player' ? 'text-accent' : 'text-destructive'}`}>
+                        {turnText}
+                    </CardDescription>
                 )}
-            </CardDescription>
+            </div>
 
              <Select value={locale} onValueChange={(v) => setLocale(v as LocaleKey)}>
                 <SelectTrigger className="w-auto h-8 text-xs gap-1.5 pl-2 pr-1" aria-label={t('hud.language')}>
