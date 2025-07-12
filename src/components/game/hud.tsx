@@ -122,9 +122,9 @@ export function GameHud(props: GameHudProps) {
             } else if (valueKey === 'name') {
                  // For name objects, we use getPieceDisplayName, for strings, we pass them as-is
                  if (typeof rawValue === 'object' && rawValue !== null) {
-                    translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
+                    translatedValues[newKey] = getPieceDisplayName(rawValue as Piece['name']);
                  } else {
-                    translatedValues[valueKey] = rawValue as string;
+                    translatedValues[newKey] = rawValue as string;
                  }
             } else {
                 translatedValues[valueKey] = rawValue as string | number;
