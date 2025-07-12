@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { Piece, PieceType, HistoryEntry, HistoryLogEntry } from '@/types';
+import type { Piece, PieceType, HistoryEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -105,34 +105,8 @@ export function GameHud(props: GameHudProps) {
   }, [currentTurn, t]);
   
   const renderedHistory = useMemo(() => {
-    return history.map((entry) => {
-        if (typeof entry === 'string') {
-            return entry; // Old format, render as-is
-        }
-
-        const historyEntry = entry as HistoryLogEntry;
-        const { key: entryKey, values: entryValues } = historyEntry;
-        const translatedValues: Record<string, string | number> = {};
-
-        for (const valueKey in entryValues) {
-            const rawValue = entryValues[valueKey];
-            if (valueKey.endsWith('Key')) {
-                const newKey = valueKey.slice(0, -3); // remove 'Key' suffix
-                translatedValues[newKey] = t(rawValue as string);
-            } else if (valueKey === 'name') {
-                 // For name objects, we use getPieceDisplayName, for strings, we pass them as-is
-                 if (typeof rawValue === 'object' && rawValue !== null) {
-                    translatedValues[newKey] = getPieceDisplayName(rawValue as Piece['name']);
-                 } else {
-                    translatedValues[newKey] = rawValue as string;
-                 }
-            } else {
-                translatedValues[valueKey] = rawValue as string | number;
-            }
-        }
-        return t(entryKey, translatedValues);
-    }).join('\n');
-  }, [history, t, getPieceDisplayName]);
+    return history.join('\n');
+  }, [history]);
 
 
   return (
@@ -327,3 +301,5 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
     </div>
   )
 }
+
+    

@@ -38,18 +38,17 @@ export function useGame() {
 
     if (isNewGame) {
       setters.setHistory([]);
-      setters.addToHistory({ key: 'history.levelStart', values: { level: 1 } });
+      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: 1 }, t, getPieceDisplayName));
     } else {
-      setters.addToHistory({ key: 'history.levelStart', values: { level: levelToSetup } });
+      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: levelToSetup }, t, getPieceDisplayName));
       const carriedOverPieces = piecesToCarry.filter(p => p.piece !== 'King');
       carriedOverPieces.forEach(piece => {
-        setters.addToHistory({
-          key: 'history.pieceCarriedOver',
-          values: {
-            name: getPieceDisplayName(piece.name),
+        setters.addToHistory(
+          gameActions.createHistoryEntry('history.pieceCarriedOver', {
+            name: piece.name,
             pieceKey: `pieces.${piece.piece}`
-          }
-        });
+          }, t, getPieceDisplayName)
+        );
       });
     }
     
@@ -82,7 +81,7 @@ export function useGame() {
     setters.appendToDebugLog(log);
     
     setters.setIsLoading(false);
-  }, [setters, getPieceDisplayName, gameActions]);
+  }, [setters, getPieceDisplayName, gameActions, t]);
   
   useEffect(() => {
     const savedGame = localStorage.getItem(SAVE_GAME_KEY);
@@ -312,3 +311,5 @@ export function useGame() {
     getPieceDisplayName,
   }
 }
+
+    

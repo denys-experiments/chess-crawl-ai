@@ -8,6 +8,33 @@ import { getValidMoves } from '@/lib/game-logic';
 import { playSound } from '@/lib/sounds';
 import { useTranslation } from '@/context/i18n';
 
+function createHistoryEntry(
+    key: string,
+    values: { [key: string]: any },
+    t: (key: string, values?: Record<string, string | number>) => string,
+    getPieceDisplayName: (name: Piece['name']) => string
+): HistoryEntry {
+    const translatedValues: Record<string, string | number> = {};
+
+    for (const valueKey in values) {
+        const rawValue = values[valueKey];
+        if (valueKey.endsWith('Key')) {
+            const newKey = valueKey.slice(0, -3);
+            translatedValues[newKey] = t(rawValue as string);
+        } else if (valueKey === 'name' || valueKey === 'targetName') {
+             if (typeof rawValue === 'object' && rawValue !== null) {
+                translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
+             } else {
+                translatedValues[valueKey] = rawValue as string;
+             }
+        } else {
+            translatedValues[valueKey] = rawValue as string | number;
+        }
+    }
+    return t(key, translatedValues);
+}
+
+
 export function useEnemyAI(
     getState: UseGameStateReturn['get'],
     setters: UseGameStateReturn['setters'],
@@ -16,53 +43,49 @@ export function useEnemyAI(
     const { t, getPieceDisplayName } = useTranslation();
 
     const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
-        let historyEntry: HistoryEntry;
+        let key: string;
+        let values: { [key: string]: any };
+
         if (targetTile?.type === 'piece') {
             if (targetTile.color === 'white') {
                 const hasCosmetic = !!targetTile.cosmetic;
-                historyEntry = {
-                    key: hasCosmetic ? 'history.playerPieceCaptured_cosmetic' : 'history.playerPieceCaptured',
-                    values: {
-                        name: getPieceDisplayName(targetTile.name),
-                        pieceKey: `pieces.${targetTile.piece}`,
-                        discoveredOnLevel: targetTile.discoveredOnLevel,
-                        captures: targetTile.captures || 0,
-                        ...(hasCosmetic && { cosmeticKey: `cosmetics.${targetTile.cosmetic}` }),
-                        factionKey: `factions.${factionColor}`,
-                        enemyPieceKey: `pieces.${movedPiece.piece}`
-                    }
+                key = hasCosmetic ? 'history.playerPieceCaptured_cosmetic' : 'history.playerPieceCaptured';
+                values = {
+                    name: targetTile.name,
+                    pieceKey: `pieces.${targetTile.piece}`,
+                    discoveredOnLevel: targetTile.discoveredOnLevel,
+                    captures: targetTile.captures || 0,
+                    ...(hasCosmetic && { cosmeticKey: `cosmetics.${targetTile.cosmetic}` }),
+                    factionKey: `factions.${factionColor}`,
+                    enemyPieceKey: `pieces.${movedPiece.piece}`
                 };
             } else {
-                historyEntry = {
-                    key: 'history.enemyCapture',
-                    values: {
-                        factionKey: `factions.${factionColor}`,
-                        name: getPieceDisplayName(movedPiece.name),
-                        pieceKey: `pieces.${movedPiece.piece}`,
-                        x: movedPiece.x + 1,
-                        y: movedPiece.y + 1,
-                        targetFactionKey: `factions.${targetTile.color}`,
-                        targetPieceKey: `pieces.${targetTile.piece}`,
-                    },
-                };
-            }
-        } else {
-            historyEntry = {
-                key: 'history.enemyMove',
-                values: {
+                key = 'history.enemyCapture';
+                values = {
                     factionKey: `factions.${factionColor}`,
-                    name: getPieceDisplayName(movedPiece.name),
+                    name: movedPiece.name,
                     pieceKey: `pieces.${movedPiece.piece}`,
                     x: movedPiece.x + 1,
                     y: movedPiece.y + 1,
-                },
+                    targetFactionKey: `factions.${targetTile.color}`,
+                    targetPieceKey: `pieces.${targetTile.piece}`,
+                };
+            }
+        } else {
+            key = 'history.enemyMove';
+            values = {
+                factionKey: `factions.${factionColor}`,
+                name: movedPiece.name,
+                pieceKey: `pieces.${movedPiece.piece}`,
+                x: movedPiece.x + 1,
+                y: movedPiece.y + 1,
             };
         }
         
-        setters.addToHistory(historyEntry);
+        setters.addToHistory(createHistoryEntry(key, values, t, getPieceDisplayName));
         setters.setIsEnemyThinking(false);
         advanceTurn();
-    }, [setters, advanceTurn, getPieceDisplayName]);
+    }, [setters, advanceTurn, getPieceDisplayName, t]);
 
     const runEnemyTurn = useCallback((factionColor: string) => {
         const { board, isSoundEnabled } = getState();
@@ -151,12 +174,7 @@ export function useEnemyAI(
         }
         
         if (allPossibleMoves.length === 0) {
-            setters.addToHistory({ 
-                key: 'history.enemyNoMoves', 
-                values: { 
-                    factionKey: `factions.${t(`factions.${factionColor}`)}`
-                } 
-            });
+            setters.addToHistory(createHistoryEntry('history.enemyNoMoves', { factionKey: `factions.${factionColor}`}, t, getPieceDisplayName));
             setters.setIsEnemyThinking(false);
             advanceTurn();
             return;
@@ -165,12 +183,7 @@ export function useEnemyAI(
         // Filter out moves with -Infinity score (like moving to a chest)
         const validMoves = allPossibleMoves.filter(move => move.score > -Infinity);
         if (validMoves.length === 0) {
-             setters.addToHistory({ 
-                key: 'history.enemyNoMoves', 
-                values: { 
-                    factionKey: `factions.${t(`factions.${factionColor}`)}`
-                } 
-            });
+             setters.addToHistory(createHistoryEntry('history.enemyNoMoves', { factionKey: `factions.${factionColor}`}, t, getPieceDisplayName));
             setters.setIsEnemyThinking(false);
             advanceTurn();
             return;
@@ -221,7 +234,9 @@ export function useEnemyAI(
         setTimeout(() => {
             finishEnemyTurn(factionColor, newPieceState, targetTile);
         }, 300);
-    }, [getState, setters, advanceTurn, finishEnemyTurn, t]);
+    }, [getState, setters, advanceTurn, finishEnemyTurn, t, getPieceDisplayName]);
     
     return { runEnemyTurn };
 }
+
+    

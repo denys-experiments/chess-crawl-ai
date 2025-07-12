@@ -10,6 +10,33 @@ import { getValidMoves as getValidMovesFromLogic, isWithinBoard as isWithinBoard
 import { generateRandomName } from '@/lib/names';
 import { playSound as playSoundLogic, initAudioContext } from '@/lib/sounds';
 
+function createHistoryEntry(
+    key: string,
+    values: { [key: string]: any },
+    t: (key: string, values?: Record<string, string | number>) => string,
+    getPieceDisplayName: (name: Piece['name']) => string
+): HistoryEntry {
+    const translatedValues: Record<string, string | number> = {};
+
+    for (const valueKey in values) {
+        const rawValue = values[valueKey];
+        if (valueKey.endsWith('Key')) {
+            const newKey = valueKey.slice(0, -3);
+            translatedValues[newKey] = t(rawValue as string);
+        } else if (valueKey === 'name') {
+             if (typeof rawValue === 'object' && rawValue !== null) {
+                translatedValues[newKey] = getPieceDisplayName(rawValue as Piece['name']);
+             } else {
+                translatedValues[newKey] = rawValue as string;
+             }
+        } else {
+            translatedValues[valueKey] = rawValue as string | number;
+        }
+    }
+    return t(key, translatedValues);
+}
+
+
 export function useGameActions(getState: UseGameStateReturn['get'], setters: UseGameStateReturn['setters']) {
     const { toast } = useToast();
     const { t, getPieceDisplayName } = useTranslation();
@@ -108,13 +135,11 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
                 captures: 0,
             };
             toast({ title: t('toast.allyRescued'), description: t('toast.allyRescuedDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
-            setters.addToHistory({ 
-                key: 'history.allyJoined', 
-                values: { 
-                    pieceTypeKey: `pieces.${newPieceType}`, 
-                    name: getPieceDisplayName(newPieceName)
-                } 
-            });
+            setters.addToHistory(createHistoryEntry('history.allyJoined', {
+                 pieceTypeKey: `pieces.${newPieceType}`,
+                 name: newPieceName
+            }, t, getPieceDisplayName));
+            
             checkForAllyRescue({ x: pos.x + dx, y: pos.y + dy }, currentBoard, levelForRescue);
             }
         }
@@ -139,15 +164,14 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
         const targetTile = newBoard[to.y][to.x] ? JSON.parse(JSON.stringify(newBoard[to.y][to.x])) : null;
 
         let newPieceState: Piece = { ...pieceToMove, x: to.x, y: to.y };
-        let historyEntry: HistoryEntry | null = null;
+        let historyKey: string | null = null;
+        let historyValues: { [key: string]: any } | null = null;
         
         if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
             if (isSoundEnabled) playSound('capture');
             newPieceState.captures = (newPieceState.captures || 0) + 1;
-            historyEntry = {
-                key: 'history.playerCapture',
-                values: { name: getPieceDisplayName(pieceToMove.name), pieceKey: `pieces.${pieceToMove.piece}`, factionKey: `factions.${t(`factions.${targetTile.color}`)}`, targetPieceKey: `pieces.${targetTile.piece}`, x: to.x + 1, y: to.y + 1 },
-            };
+            historyKey = 'history.playerCapture';
+            historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, factionKey: `factions.${targetTile.color}`, targetPieceKey: `pieces.${targetTile.piece}`, x: to.x + 1, y: to.y + 1 };
         } else if (targetTile?.type === 'chest') {
             if (isSoundEnabled) playSound('move');
             const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
@@ -155,7 +179,8 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
                 const newPieceType = getPromotionPiece(level, currentPlayerPieces);
                 newPieceState = { ...newPieceState, id: `${newPieceType.toLowerCase()}-${Date.now()}`, piece: newPieceType, direction: undefined };
                 toast({ title: t('toast.promotion'), description: t('toast.promotionDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
-                historyEntry = { key: 'history.playerPromotion', values: { name: getPieceDisplayName(pieceToMove.name), pieceKey: `pieces.${pieceToMove.piece}`, newPieceTypeKey: `pieces.${newPieceType}` } };
+                historyKey = 'history.playerPromotion';
+                historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, newPieceTypeKey: `pieces.${newPieceType}` };
             } else {
                 const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
                 const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
@@ -166,11 +191,13 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
                 newPieceState.cosmetic = newCosmetic;
                 const cosmeticName = t(`cosmetics.${newCosmetic}`);
                 toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName}) });
-                historyEntry = { key: 'history.playerCosmetic', values: { name: getPieceDisplayName(pieceToMove.name), pieceKey: `pieces.${pieceToMove.piece}`, cosmeticKey: `cosmetics.${newCosmetic}` } };
+                historyKey = 'history.playerCosmetic';
+                historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, cosmeticKey: `cosmetics.${newCosmetic}` };
             }
         } else {
             if (isSoundEnabled) playSound('move');
-            historyEntry = { key: 'history.playerMove', values: { name: getPieceDisplayName(pieceToMove.name), pieceKey: `pieces.${pieceToMove.piece}`, x: to.x + 1, y: to.y + 1 } };
+            historyKey = 'history.playerMove';
+            historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, x: to.x + 1, y: to.y + 1 };
         }
 
         if (pieceToMove.piece === 'Pawn') {
@@ -188,7 +215,9 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
             }
         }
 
-        if (historyEntry) setters.addToHistory(historyEntry);
+        if (historyKey && historyValues) {
+            setters.addToHistory(createHistoryEntry(historyKey, historyValues, t, getPieceDisplayName));
+        }
         newBoard[to.y][to.x] = newPieceState;
         newBoard[from.y][from.x] = null;
         
@@ -314,6 +343,9 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
         handleAwardCosmetic,
         isWithinBoard,
         isSquareAttackedBy,
-        playSound
+        playSound,
+        createHistoryEntry,
     };
 }
+
+    
