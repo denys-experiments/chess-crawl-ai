@@ -3,10 +3,9 @@
 
 import { Toaster } from "@/components/ui/toaster";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers() {
   return (
     <>
-      {children}
       <Toaster />
     </>
   );

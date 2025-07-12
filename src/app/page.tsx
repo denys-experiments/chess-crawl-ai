@@ -9,7 +9,7 @@ import { LevelCompleteDialog } from '@/components/game/level-complete-dialog';
 import { GameOverDialog } from '@/components/game/game-over-dialog';
 import { HowToPlayDialog } from '@/components/game/how-to-play-dialog';
 import { useGame } from '@/hooks/use-game';
-import { I18nProvider, useTranslation } from '@/context/i18n';
+import { useTranslation } from '@/context/i18n';
 
 function Game() {
   const {
@@ -123,8 +123,6 @@ function Game() {
 
 export default function Home() {
   return (
-    <I18nProvider>
       <Game />
-    </I18nProvider>
   )
 }

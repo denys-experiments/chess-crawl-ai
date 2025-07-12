@@ -2,6 +2,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
+import { I18nProvider } from '@/context/i18n';
 
 export const metadata: Metadata = {
   title: 'Chess Crawl',
@@ -22,9 +23,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <Providers>
+        <I18nProvider>
           {children}
-        </Providers>
+          <Providers />
+        </I18nProvider>
       </body>
     </html>
   );
