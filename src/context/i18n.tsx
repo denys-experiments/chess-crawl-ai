@@ -10,7 +10,7 @@ import type { Locale } from '@/locales/en';
 import type { Piece } from '@/types';
 
 const locales: { [key: string]: Locale } = { en, dbg, ua, ja };
-const I18N_STORAGE_KEY = 'chess-crawl-locale';
+const I1N_STORAGE_KEY = 'chess-crawl-locale';
 
 export type LocaleKey = keyof typeof locales;
 
@@ -31,7 +31,7 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
   const [locale, setLocaleState] = useState<LocaleKey>('en');
 
   useEffect(() => {
-    const savedLocale = localStorage.getItem(I18N_STORAGE_KEY) as LocaleKey | null;
+    const savedLocale = localStorage.getItem(I1N_STORAGE_KEY) as LocaleKey | null;
     if (savedLocale && locales[savedLocale]) {
       setLocaleState(savedLocale);
     }
