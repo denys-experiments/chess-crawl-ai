@@ -54,7 +54,7 @@ interface GameHudProps {
   debugLog: string;
   onShowHelp: () => void;
   isSoundEnabled: boolean;
-  onToggleSound: () => void;
+  onToggleSound: (enabled: boolean) => void;
 }
 
 function PieceInfoPanel({ piece }: { piece: Piece }) {
@@ -116,7 +116,7 @@ export function GameHud(props: GameHudProps) {
           <div className="flex justify-between items-center">
             <CardTitle className="font-headline text-3xl">{t('hud.title')}</CardTitle>
             <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleSound}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleSound(!isSoundEnabled)}>
                     {isSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-muted-foreground" />}
                     <span className="sr-only">{isSoundEnabled ? t('hud.muteSounds') : t('hud.unmuteSounds')}</span>
                 </Button>

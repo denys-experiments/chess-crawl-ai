@@ -16,7 +16,7 @@ export function useGame() {
   const { get: getState, setters } = stateAndSetters;
 
   const { toast } = useToast();
-  const { t, getPieceDisplayName } = useTranslation();
+  const { t } = useTranslation();
 
   const gameActions = useGameActions(getState, setters);
   const { runEnemyTurn } = useEnemyAI(getState, setters, gameActions.advanceTurn);
@@ -38,16 +38,16 @@ export function useGame() {
 
     if (isNewGame) {
       setters.setHistory([]);
-      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: 1 }, t, getPieceDisplayName));
+      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: 1 }, t, (name) => '')); // Name translation not needed here
     } else {
-      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: levelToSetup }, t, getPieceDisplayName));
+      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: levelToSetup }, t, (name) => ''));
       const carriedOverPieces = piecesToCarry.filter(p => p.piece !== 'King');
       carriedOverPieces.forEach(piece => {
         setters.addToHistory(
           gameActions.createHistoryEntry('history.pieceCarriedOver', {
             name: piece.name,
             pieceKey: `pieces.${piece.piece}`
-          }, t, getPieceDisplayName)
+          }, t, (name) => '') // Name translation not needed here
         );
       });
     }
@@ -77,11 +77,11 @@ export function useGame() {
         }
     }));
     log += `Player pieces on board: ${playerPiecesOnBoard.length}\n`;
-    log += JSON.stringify(playerPiecesOnBoard.map(p => ({ piece: p.piece, name: getPieceDisplayName(p.name), id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
+    log += JSON.stringify(playerPiecesOnBoard.map(p => ({ piece: p.piece, name: p.name, id: p.id, level: p.discoveredOnLevel, captures: p.captures })), null, 2);
     setters.appendToDebugLog(log);
     
     setters.setIsLoading(false);
-  }, [setters, getPieceDisplayName, gameActions, t]);
+  }, [setters, gameActions, t]);
   
   useEffect(() => {
     const savedGame = localStorage.getItem(SAVE_GAME_KEY);
@@ -307,8 +307,7 @@ export function useGame() {
       handleCreatePiece,
       handlePromotePawn,
       handleAwardCosmetic: gameActions.handleAwardCosmetic,
-    },
-    getPieceDisplayName,
+    }
   }
 }
 
