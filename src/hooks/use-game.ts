@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useCallback } from 'react';
-import type { Piece, PieceType } from '@/types';
+import type { Piece, PieceType, HistoryEntry } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from '@/context/i18n';
 import { useGameState, SAVE_GAME_KEY } from './use-game-state';
@@ -38,16 +38,16 @@ export function useGame() {
 
     if (isNewGame) {
       setters.setHistory([]);
-      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: 1 }, t, (name) => '')); // Name translation not needed here
+      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: 1 }));
     } else {
-      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: levelToSetup }, t, (name) => ''));
+      setters.addToHistory(gameActions.createHistoryEntry('history.levelStart', { level: levelToSetup }));
       const carriedOverPieces = piecesToCarry.filter(p => p.piece !== 'King');
       carriedOverPieces.forEach(piece => {
         setters.addToHistory(
           gameActions.createHistoryEntry('history.pieceCarriedOver', {
             name: piece.name,
             pieceKey: `pieces.${piece.piece}`
-          }, t, (name) => '') // Name translation not needed here
+          })
         );
       });
     }

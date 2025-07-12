@@ -105,8 +105,24 @@ export function GameHud(props: GameHudProps) {
   }, [currentTurn, t]);
   
   const renderedHistory = useMemo(() => {
-    return history.join('\n');
-  }, [history]);
+    return history.map(entry => {
+        if (typeof entry === 'string') return entry; // For old history entries
+        const { key, values } = entry;
+        const translatedValues: Record<string, string | number> = {};
+        for (const valueKey in values) {
+            const rawValue = values[valueKey];
+            if (valueKey.endsWith('Key')) {
+                const newKey = valueKey.slice(0, -3);
+                translatedValues[newKey] = t(rawValue as string);
+            } else if (valueKey === 'name' || valueKey === 'targetName') {
+                translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
+            } else {
+                translatedValues[valueKey] = rawValue as string | number;
+            }
+        }
+        return t(key, translatedValues);
+    }).join('\n');
+  }, [history, t, getPieceDisplayName]);
 
 
   return (

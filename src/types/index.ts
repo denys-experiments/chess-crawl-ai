@@ -42,6 +42,7 @@ export interface AvailableMove extends Position {
   isThreatened?: boolean;
 }
 
-export type HistoryEntry = string;
-
-    
+export type HistoryEntry = {
+    key: string;
+    values: { [key: string]: any };
+} | string;

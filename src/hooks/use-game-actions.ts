@@ -12,34 +12,15 @@ import { playSound as playSoundLogic, initAudioContext } from '@/lib/sounds';
 
 function createHistoryEntry(
     key: string,
-    values: { [key: string]: any },
-    t: (key: string, values?: Record<string, string | number>) => string,
-    getPieceDisplayName: (name: Piece['name']) => string
+    values: { [key: string]: any }
 ): HistoryEntry {
-    const translatedValues: Record<string, string | number> = {};
-
-    for (const valueKey in values) {
-        const rawValue = values[valueKey];
-        if (valueKey.endsWith('Key')) {
-            const newKey = valueKey.slice(0, -3);
-            translatedValues[newKey] = t(rawValue as string);
-        } else if (valueKey === 'name') {
-             if (typeof rawValue === 'object' && rawValue !== null) {
-                translatedValues[newKey] = getPieceDisplayName(rawValue as Piece['name']);
-             } else {
-                translatedValues[newKey] = rawValue as string;
-             }
-        } else {
-            translatedValues[valueKey] = rawValue as string | number;
-        }
-    }
-    return t(key, translatedValues);
+    return { key, values };
 }
 
 
 export function useGameActions(getState: UseGameStateReturn['get'], setters: UseGameStateReturn['setters']) {
     const { toast } = useToast();
-    const { t, getPieceDisplayName } = useTranslation();
+    const { t } = useTranslation();
     const audioInitialized = useRef(false);
     const clickLock = useRef(false);
     
@@ -138,13 +119,13 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
             setters.addToHistory(createHistoryEntry('history.allyJoined', {
                  pieceTypeKey: `pieces.${newPieceType}`,
                  name: newPieceName
-            }, t, getPieceDisplayName));
+            }));
             
             checkForAllyRescue({ x: pos.x + dx, y: pos.y + dy }, currentBoard, levelForRescue);
             }
         }
         });
-    }, [toast, setters, t, getPieceDisplayName]);
+    }, [toast, setters, t, isWithinBoard]);
 
     const checkForAllyRescueOnSetup = useCallback((currentBoard: Board, levelForRescue: number) => {
         currentBoard.forEach((row, y) => row.forEach((tile, x) => {
@@ -164,14 +145,12 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
         const targetTile = newBoard[to.y][to.x] ? JSON.parse(JSON.stringify(newBoard[to.y][to.x])) : null;
 
         let newPieceState: Piece = { ...pieceToMove, x: to.x, y: to.y };
-        let historyKey: string | null = null;
-        let historyValues: { [key: string]: any } | null = null;
+        let historyEntry: HistoryEntry | null = null;
         
         if (targetTile?.type === 'piece' && targetTile.color !== pieceToMove.color) {
             if (isSoundEnabled) playSound('capture');
             newPieceState.captures = (newPieceState.captures || 0) + 1;
-            historyKey = 'history.playerCapture';
-            historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, factionKey: `factions.${targetTile.color}`, targetPieceKey: `pieces.${targetTile.piece}`, x: to.x + 1, y: to.y + 1 };
+            historyEntry = createHistoryEntry('history.playerCapture', { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, factionKey: `factions.${targetTile.color}`, targetPieceKey: `pieces.${targetTile.piece}`, x: to.x + 1, y: to.y + 1 });
         } else if (targetTile?.type === 'chest') {
             if (isSoundEnabled) playSound('move');
             const currentPlayerPieces = board.flatMap(row => row.filter(tile => tile?.type === 'piece' && tile.color === 'white')) as Piece[];
@@ -179,8 +158,7 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
                 const newPieceType = getPromotionPiece(level, currentPlayerPieces);
                 newPieceState = { ...newPieceState, id: `${newPieceType.toLowerCase()}-${Date.now()}`, piece: newPieceType, direction: undefined };
                 toast({ title: t('toast.promotion'), description: t('toast.promotionDesc', { pieceType: t(`pieces.${newPieceType}`) }) });
-                historyKey = 'history.playerPromotion';
-                historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, newPieceTypeKey: `pieces.${newPieceType}` };
+                historyEntry = createHistoryEntry('history.playerPromotion', { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, newPieceTypeKey: `pieces.${newPieceType}` });
             } else {
                 const availableCosmetics = ['sunglasses', 'tophat', 'partyhat', 'bowtie', 'heart', 'star'];
                 const newCosmetic = availableCosmetics[Math.floor(Math.random() * availableCosmetics.length)];
@@ -191,13 +169,11 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
                 newPieceState.cosmetic = newCosmetic;
                 const cosmeticName = t(`cosmetics.${newCosmetic}`);
                 toast({ title: t('toast.chestOpened'), description: t('toast.chestOpenedDesc', { piece: t(`pieces.${pieceToMove.piece}`), cosmetic: cosmeticName}) });
-                historyKey = 'history.playerCosmetic';
-                historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, cosmeticKey: `cosmetics.${newCosmetic}` };
+                historyEntry = createHistoryEntry('history.playerCosmetic', { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, cosmeticKey: `cosmetics.${newCosmetic}` });
             }
         } else {
             if (isSoundEnabled) playSound('move');
-            historyKey = 'history.playerMove';
-            historyValues = { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, x: to.x + 1, y: to.y + 1 };
+            historyEntry = createHistoryEntry('history.playerMove', { name: pieceToMove.name, pieceKey: `pieces.${pieceToMove.piece}`, x: to.x + 1, y: to.y + 1 });
         }
 
         if (pieceToMove.piece === 'Pawn') {
@@ -215,8 +191,8 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
             }
         }
 
-        if (historyKey && historyValues) {
-            setters.addToHistory(createHistoryEntry(historyKey, historyValues, t, getPieceDisplayName));
+        if (historyEntry) {
+            setters.addToHistory(historyEntry);
         }
         newBoard[to.y][to.x] = newPieceState;
         newBoard[from.y][from.x] = null;
@@ -230,7 +206,7 @@ export function useGameActions(getState: UseGameStateReturn['get'], setters: Use
             advanceTurn();
             onComplete();
         }, 300);
-    }, [getState, setters, toast, t, getPieceDisplayName, checkForAllyRescue, advanceTurn, getPromotionPiece, playSound]);
+    }, [getState, setters, toast, t, checkForAllyRescue, advanceTurn, getPromotionPiece, playSound]);
 
     const handleTileClick = useCallback((x: number, y: number) => {
         if (!audioInitialized.current) {

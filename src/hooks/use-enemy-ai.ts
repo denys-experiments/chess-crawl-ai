@@ -6,32 +6,12 @@ import type { UseGameStateReturn } from './use-game-state';
 import type { Piece, Tile, Position, HistoryEntry } from '@/types';
 import { getValidMoves } from '@/lib/game-logic';
 import { playSound } from '@/lib/sounds';
-import { useTranslation } from '@/context/i18n';
 
 function createHistoryEntry(
     key: string,
-    values: { [key: string]: any },
-    t: (key: string, values?: Record<string, string | number>) => string,
-    getPieceDisplayName: (name: Piece['name']) => string
+    values: { [key: string]: any }
 ): HistoryEntry {
-    const translatedValues: Record<string, string | number> = {};
-
-    for (const valueKey in values) {
-        const rawValue = values[valueKey];
-        if (valueKey.endsWith('Key')) {
-            const newKey = valueKey.slice(0, -3);
-            translatedValues[newKey] = t(rawValue as string);
-        } else if (valueKey === 'name' || valueKey === 'targetName') {
-             if (typeof rawValue === 'object' && rawValue !== null) {
-                translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
-             } else {
-                translatedValues[valueKey] = rawValue as string;
-             }
-        } else {
-            translatedValues[valueKey] = rawValue as string | number;
-        }
-    }
-    return t(key, translatedValues);
+    return { key, values };
 }
 
 
@@ -40,7 +20,6 @@ export function useEnemyAI(
     setters: UseGameStateReturn['setters'],
     advanceTurn: () => void
 ) {
-    const { t, getPieceDisplayName } = useTranslation();
 
     const finishEnemyTurn = useCallback((factionColor: string, movedPiece: Piece, targetTile: Tile | null) => {
         let key: string;
@@ -82,10 +61,10 @@ export function useEnemyAI(
             };
         }
         
-        setters.addToHistory(createHistoryEntry(key, values, t, getPieceDisplayName));
+        setters.addToHistory(createHistoryEntry(key, values));
         setters.setIsEnemyThinking(false);
         advanceTurn();
-    }, [setters, advanceTurn, getPieceDisplayName, t]);
+    }, [setters, advanceTurn]);
 
     const runEnemyTurn = useCallback((factionColor: string) => {
         const { board, isSoundEnabled } = getState();
@@ -174,7 +153,7 @@ export function useEnemyAI(
         }
         
         if (allPossibleMoves.length === 0) {
-            setters.addToHistory(createHistoryEntry('history.enemyNoMoves', { factionKey: `factions.${factionColor}`}, t, getPieceDisplayName));
+            setters.addToHistory(createHistoryEntry('history.enemyNoMoves', { factionKey: `factions.${factionColor}`}));
             setters.setIsEnemyThinking(false);
             advanceTurn();
             return;
@@ -183,7 +162,7 @@ export function useEnemyAI(
         // Filter out moves with -Infinity score (like moving to a chest)
         const validMoves = allPossibleMoves.filter(move => move.score > -Infinity);
         if (validMoves.length === 0) {
-             setters.addToHistory(createHistoryEntry('history.enemyNoMoves', { factionKey: `factions.${factionColor}`}, t, getPieceDisplayName));
+             setters.addToHistory(createHistoryEntry('history.enemyNoMoves', { factionKey: `factions.${factionColor}`}));
             setters.setIsEnemyThinking(false);
             advanceTurn();
             return;
@@ -234,7 +213,7 @@ export function useEnemyAI(
         setTimeout(() => {
             finishEnemyTurn(factionColor, newPieceState, targetTile);
         }, 300);
-    }, [getState, setters, advanceTurn, finishEnemyTurn, t, getPieceDisplayName]);
+    }, [getState, setters, advanceTurn, finishEnemyTurn]);
     
     return { runEnemyTurn };
 }
