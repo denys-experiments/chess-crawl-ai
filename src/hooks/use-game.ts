@@ -13,7 +13,8 @@ import { initializeBoard } from '@/lib/game-logic';
 import { generateRandomName } from '@/lib/names';
 
 export function useGame() {
-  const { get: getState, setters } = useGameState();
+  const stateAndSetters = useGameState();
+  const { get: getState, setters } = stateAndSetters;
   const { toast } = useToast();
   const { t } = useTranslation();
   
@@ -98,51 +99,6 @@ export function useGame() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const { board, level, isLoading, isLevelComplete, isGameOver, isKingInCheck } = getState();
-    if (!board) return;
-
-    const newPlayerPieces: Piece[] = [];
-    const newEnemyPieces: Piece[] = [];
-
-    board.forEach((row) => {
-      row.forEach((tile) => {
-        if (tile?.type === 'piece') {
-          if (tile.color === 'white') {
-            newPlayerPieces.push(tile);
-          } else {
-            newEnemyPieces.push(tile);
-          }
-        }
-      });
-    });
-    setters.setPlayerPieces(newPlayerPieces);
-    setters.setEnemyPieces(newEnemyPieces);
-    
-    const playerKing = newPlayerPieces.find(p => p.piece === 'King');
-    if (playerKing) {
-        const enemyFactions = Array.from(new Set(newEnemyPieces.map(p => p.color)));
-        const inCheck = gameActions.isSquareAttackedBy({ x: playerKing.x, y: playerKing.y }, board, enemyFactions);
-        if (inCheck && !isKingInCheck) {
-            if(getState().isSoundEnabled) gameActions.playSound('check');
-        }
-        setters.setIsKingInCheck(inCheck);
-    } else {
-        setters.setIsKingInCheck(false);
-    }
-
-    if (level > 0 && !isLoading) {
-      if (newEnemyPieces.length === 0 && newPlayerPieces.length > 0 && !isLevelComplete) {
-        if(getState().isSoundEnabled) gameActions.playSound('win');
-        setters.setIsLevelComplete(true);
-      } else if ((newPlayerPieces.length === 0 || !playerKing) && !isGameOver) {
-        if(getState().isSoundEnabled) gameActions.playSound('lose');
-        setters.setIsGameOver(true);
-        clearSave();
-      }
-    }
-  }, [getState, setters, gameActions, clearSave]);
   
   useEffect(() => {
     const { currentTurn, isEnemyThinking, isGameOver, isLevelComplete } = getState();
