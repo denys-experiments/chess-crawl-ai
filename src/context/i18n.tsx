@@ -39,7 +39,7 @@ export const I18nProvider = ({ children }: { children: React.ReactNode }) => {
 
   const setLocale = useCallback((newLocale: LocaleKey) => {
     if (locales[newLocale]) {
-      localStorage.setItem(I18N_STORAGE_KEY, newLocale);
+      localStorage.setItem(I1N_STORAGE_KEY, newLocale);
       setLocaleState(newLocale);
     }
   }, []);
