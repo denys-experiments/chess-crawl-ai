@@ -16,7 +16,7 @@ export function useGame() {
   const { get: getState, setters } = stateAndSetters;
 
   const { toast } = useToast();
-  const { t, getPieceDisplayName } = useTranslation();
+  const { t } = useTranslation();
 
   const gameActions = useGameActions(getState, setters);
   const { runEnemyTurn } = useEnemyAI(getState, setters, gameActions.advanceTurn);
