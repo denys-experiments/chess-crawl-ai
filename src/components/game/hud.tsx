@@ -111,18 +111,21 @@ export function GameHud(props: GameHudProps) {
         const translatedValues: Record<string, string | number> = {};
         for (const valueKey in values) {
             const rawValue = values[valueKey];
+            let newKey: string;
             if (valueKey.endsWith('Key')) {
-                const newKey = valueKey.slice(0, -3);
+                newKey = valueKey.slice(0, -3);
                 translatedValues[newKey] = t(rawValue as string);
             } else if (valueKey === 'name' || valueKey === 'targetName') {
+                newKey = valueKey;
                 translatedValues[newKey] = getPieceDisplayName(rawValue as Piece['name']);
             } else {
+                newKey = valueKey;
                 translatedValues[newKey] = rawValue as string | number;
             }
         }
         return t(key, translatedValues);
     }).join('\n');
-  }, [history, t, getPieceDisplayName, locale]);
+  }, [history, locale, t, getPieceDisplayName]);
 
 
   return (
@@ -317,3 +320,5 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
     </div>
   )
 }
+
+    
