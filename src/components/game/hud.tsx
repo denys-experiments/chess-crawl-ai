@@ -102,7 +102,7 @@ export function GameHud(props: GameHudProps) {
       return t('hud.playerTurn');
     }
     return t('hud.enemyTurn', { faction: t(`factions.${currentTurn}`) });
-  }, [currentTurn, t, locale]);
+  }, [currentTurn, t]);
   
   const renderedHistory = useMemo(() => {
     return history.map(entry => {
@@ -122,7 +122,7 @@ export function GameHud(props: GameHudProps) {
         }
         return t(key, translatedValues);
     }).join('\n');
-  }, [history, t, getPieceDisplayName, locale]);
+  }, [history, t, getPieceDisplayName]);
 
 
   return (
@@ -317,5 +317,3 @@ function CheatPanel({ onRegenerateLevel, onCreatePiece, onPromotePawn, onAwardCo
     </div>
   )
 }
-
-    
