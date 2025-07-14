@@ -102,7 +102,7 @@ export function GameHud(props: GameHudProps) {
       return t('hud.playerTurn');
     }
     return t('hud.enemyTurn', { faction: t(`factions.${currentTurn}`) });
-  }, [currentTurn, t]);
+  }, [currentTurn, t, locale]);
   
   const renderedHistory = useMemo(() => {
     return history.map(entry => {
@@ -115,14 +115,14 @@ export function GameHud(props: GameHudProps) {
                 const newKey = valueKey.slice(0, -3);
                 translatedValues[newKey] = t(rawValue as string);
             } else if (valueKey === 'name' || valueKey === 'targetName') {
-                translatedValues[valueKey] = getPieceDisplayName(rawValue as Piece['name']);
+                translatedValues[newKey] = getPieceDisplayName(rawValue as Piece['name']);
             } else {
-                translatedValues[valueKey] = rawValue as string | number;
+                translatedValues[newKey] = rawValue as string | number;
             }
         }
         return t(key, translatedValues);
     }).join('\n');
-  }, [history, t, getPieceDisplayName]);
+  }, [history, t, getPieceDisplayName, locale]);
 
 
   return (
